@@ -4149,6 +4149,9 @@ input.stellvertretung-input {
                 <div class="menu-item" onclick="startAddMode()">
                     <span class="material-symbols-outlined">add_circle</span> Lektion hinzufügen
                 </div>
+                <div class="menu-item" onclick="oeffneVertretungsDialog()">
+                    <span class="material-symbols-outlined">swap_horiz</span> Vertretung eintragen
+                </div>
                 <div class="menu-item" onclick="openBanner()">
                     <span class="material-symbols-outlined">campaign</span> Bannermeldungen
                 </div>
@@ -4227,8 +4230,6 @@ input.stellvertretung-input {
     </div>
 
     <hr class="menu-divider">
-
- <hr class="menu-divider">
 
     <!-- 🚪 Kategorie 5: Abmelden -->
     <div class="menu-category">
@@ -8636,9 +8637,7 @@ async function saveMaterialSelection(mat, detail, time, slot, klasse, btn, userK
     // Übergabe an prozessiereAktion (regelt Doppellektionen, Queue und Events)
     if (typeof window.prozessiereAktion === 'function') {
         window.prozessiereAktion(payload, (data) => {
-            if (typeof window.triggerNewsWrapper === 'function') {
-                window.triggerNewsWrapper("Material", slotNum, klasse, safeUserKuerzel);
-            }
+            // triggerNewsWrapper hier entfernt, damit reine Materialänderungen keine News auslösen
             onCompleteVisuals(data);
         });
     } else {
@@ -8666,10 +8665,7 @@ async function saveMaterialSelection(mat, detail, time, slot, klasse, btn, userK
                 if (insertError) throw insertError;
             }
 
-            if (typeof window.triggerNewsWrapper === 'function') {
-                await window.triggerNewsWrapper("Material", slotNum, klasse, safeUserKuerzel);
-            }
-
+            // triggerNewsWrapper im Fallback ebenfalls entfernt
             onCompleteVisuals(payload);
             if (typeof syncPlan === 'function') syncPlan();
 
@@ -13652,6 +13648,257 @@ window.cancelAddMode = function() {
 };
     
 
+
+/* ============================================================
+       11.11. STV eintragen & Übersicht
+       ============================================================ */
+
+    function oeffneVertretungsDialog() {
+        // Direkt die Übersicht statt des alten Eintrags-Modals öffnen
+        oeffneVertretungsUebersicht();
+    }
+
+    function oeffneNeuenStvEintragDialog() {
+        // Falls man aus der Übersicht heraus doch einen neuen Eintrag erfassen will
+        const existingModal = document.getElementById('vertretungs-modal');
+        if (existingModal) existingModal.remove();
+
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        const modalHtml = `
+            <div id="vertretungs-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20000; display: flex; justify-content: center; align-items: center;">
+                <div style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
+                    <h3 style="margin-top: 0; text-transform: uppercase; font-size: 1.3em; letter-spacing: 1px; border-bottom: 2px solid #51ae32; padding-bottom: 10px;">Stellvertretung eintragen</h3>
+                    
+                    <div id="step-1">
+                        <label style="display: block; margin-top: 15px; font-size: 0.9em; color: #ccc;">Übernehmende Lehrperson (Stv-Kürzel):</label>
+                        <input type="text" id="stv-input" placeholder="z.B. bupa" style="width: 100%; padding: 10px; margin-top: 5px; background: rgba(255,255,255,0.1); border: 1px solid #555; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 1em;">
+
+                        <label style="display: block; margin-top: 15px; font-size: 0.9em; color: #ccc;">Ausfallende Lehrperson (Kürzel):</label>
+                        <input type="text" id="ausfall-input" placeholder="z.B. seni" style="width: 100%; padding: 10px; margin-top: 5px; background: rgba(255,255,255,0.1); border: 1px solid #555; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 1em;">
+
+                        <label style="display: block; margin-top: 15px; font-size: 0.9em; color: #ccc;">Datum:</label>
+                        <input type="date" id="datum-input" value="${todayStr}" style="width: 100%; padding: 10px; margin-top: 5px; background: rgba(255,255,255,0.1); border: 1px solid #555; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 1em;">
+
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                            <button type="button" onclick="document.getElementById('vertretungs-modal').remove(); oeffneVertretungsUebersicht();" style="padding: 10px 20px; background: #555; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Abbrechen</button>
+                            <button type="button" id="weiter-btn" onclick="ladeLektionenFuerVertretung()" style="padding: 10px 20px; background: #51ae32; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Weiter</button>
+                        </div>
+                    </div>
+
+                    <div id="step-2" style="display: none;">
+                        <p id="step2-info" style="font-size: 0.95em; color: #ddd; margin-bottom: 15px;"></p>
+                        <div id="lektionen-checkbox-container" style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; border: 1px solid #444;"></div>
+                        
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                            <button type="button" onclick="document.getElementById('step-2').style.display='none'; document.getElementById('step-1').style.display='block';" style="padding: 10px 20px; background: #555; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Zurück</button>
+                            <button type="button" onclick="speichereVertretung()" style="padding: 10px 20px; background: #51ae32; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">OK / Speichern</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    let gefundeneVertretungsLektionen = [];
+
+    async function ladeLektionenFuerVertretung() {
+        const stv = document.getElementById('stv-input').value.trim().toLowerCase();
+        const ausfall = document.getElementById('ausfall-input').value.trim().toLowerCase();
+        const datum = document.getElementById('datum-input').value;
+
+        if (!stv || !ausfall || !datum) {
+            alert("Bitte alle Felder ausfüllen.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=slot,klasse,halle,verfasser&datum=eq.${datum}&verfasser=eq.${ausfall}`, {
+                headers: {
+                    "apikey": SUPABASE_ANON_KEY,
+                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            });
+            
+            gefundeneVertretungsLektionen = await response.json();
+
+            if (!Array.isArray(gefundeneVertretungsLektionen) || gefundeneVertretungsLektionen.length === 0) {
+                alert(`Keine Lektionen für "${ausfall}" am ${datum} gefunden.`);
+                return;
+            }
+
+            document.getElementById('step-1').style.display = 'none';
+            document.getElementById('step-2').style.display = 'block';
+            document.getElementById('step2-info').innerText = `Wähle die Lektionen aus, die ${stv} für ${ausfall} übernimmt:`;
+
+            const container = document.getElementById('lektionen-checkbox-container');
+            container.innerHTML = '';
+
+            gefundeneVertretungsLektionen.forEach((l, index) => {
+                container.innerHTML += `
+                    <label style="display: flex; align-items: center; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer;">
+                        <input type="checkbox" value="${index}" checked style="margin-right: 12px; transform: scale(1.2);">
+                        <span>Slot ${l.slot} &bull; <strong>${l.klasse}</strong> (${l.halle})</span>
+                    </label>
+                `;
+            });
+
+        } catch (err) {
+            console.error("Fehler beim Laden der Lektionen:", err);
+            alert("Fehler beim Abrufen der Daten aus Supabase.");
+        }
+    }
+
+    async function speichereVertretung() {
+        const stv = document.getElementById('stv-input').value.trim().toLowerCase();
+        const ausfall = document.getElementById('ausfall-input').value.trim().toLowerCase();
+        const datum = document.getElementById('datum-input').value;
+        const verfasserString = `${stv} (für: ${ausfall})`;
+
+        const checkboxes = document.querySelectorAll('#lektionen-checkbox-container input[type="checkbox"]:checked');
+        if (checkboxes.length === 0) {
+            alert("Bitte mindestens eine Lektion auswählen.");
+            return;
+        }
+
+        const ausgewaehlteSlots = Array.from(checkboxes).map(cb => gefundeneVertretungsLektionen[cb.value].slot);
+
+        try {
+            for (const slotId of ausgewaehlteSlots) {
+                await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?datum=eq.${datum}&slot=eq.${slotId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        "apikey": SUPABASE_ANON_KEY,
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                        "Content-Type": "application/json",
+                        "Prefer": "return=minimal"
+                    },
+                    body: JSON.stringify({
+                        verfasser: verfasserString
+                    })
+                });
+            }
+
+            document.getElementById('vertretungs-modal').remove();
+            alert("Stellvertretung erfolgreich eingetragen!");
+            updateDisplay();
+            oeffneVertretungsUebersicht();
+
+        } catch (err) {
+            console.error("Fehler beim Speichern der Stellvertretung:", err);
+            alert("Fehler beim Aktualisieren der Datenbank.");
+        }
+    }
+
+    function oeffneVertretungsUebersicht() {
+        const existingModal = document.getElementById('vertretungs-uebersicht-modal');
+        if (existingModal) existingModal.remove();
+        const existingDialog = document.getElementById('vertretungs-modal');
+        if (existingDialog) existingDialog.remove();
+
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        const modalHtml = `
+            <div id="vertretungs-uebersicht-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20000; display: flex; justify-content: center; align-items: center;">
+                <div style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #51ae32; padding-bottom: 10px; margin-bottom: 15px;">
+                        <h3 style="margin: 0; text-transform: uppercase; font-size: 1.3em; letter-spacing: 1px;">Aktive Stellvertretungen (Heute)</h3>
+                        <button type="button" onclick="document.getElementById('vertretungs-uebersicht-modal').remove(); oeffneNeuenStvEintragDialog();" style="padding: 6px 12px; background: #51ae32; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85em;">+ Neue STV erfassen</button>
+                    </div>
+                    
+                    <div id="stv-liste-container" style="max-height: 300px; overflow-y: auto; margin: 15px 0; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; border: 1px solid #444;">
+                        <div style="text-align: center; color: #aaa; padding: 20px;">Lade aktive Stellvertretungen...</div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; margin-top: 25px;">
+                        <button type="button" onclick="document.getElementById('vertretungs-uebersicht-modal').remove()" style="padding: 10px 20px; background: #555; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Schliessen</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        ladeAktiveVertretungenDaten(todayStr);
+    }
+
+    async function ladeAktiveVertretungenDaten(datum) {
+        const container = document.getElementById('stv-liste-container');
+        
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=slot,klasse,halle,verfasser&datum=eq.${datum}&verfasser=like.*(für:*`, {
+                headers: {
+                    "apikey": SUPABASE_ANON_KEY,
+                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            });
+            
+            const daten = await response.json();
+
+            if (!Array.isArray(daten) || daten.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: #aaa; padding: 20px;">Keine aktiven Stellvertretungen für heute eingetragen.</div>`;
+                return;
+            }
+
+            let gruppen = {};
+            daten.forEach(item => {
+                if (!gruppen[item.verfasser]) {
+                    gruppen[item.verfasser] = [];
+                }
+                gruppen[item.verfasser].push(item);
+            });
+
+            let html = '';
+            for (const [verfasserStr, eintraege] of Object.entries(gruppen)) {
+                const slotsText = eintraege.map(e => `Slot ${e.slot} (${e.klasse} in ${e.halle})`).join(', ');
+                
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <div>
+                            <strong style="color: #51ae32; font-size: 1.1em;">${verfasserStr}</strong>
+                            <div style="font-size: 0.85em; color: #ccc; margin-top: 4px;">Betroffene Lektionen: ${slotsText}</div>
+                        </div>
+                        <button onclick="loescheVertretungsPaket('${verfasserStr}', '${datum}')" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85em;">Löschen</button>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+
+        } catch (err) {
+            console.error("Fehler beim Laden der Vertretungsübersicht:", err);
+            container.innerHTML = `<div style="text-align: center; color: #e74c3c; padding: 20px;">Fehler beim Laden der Daten.</div>`;
+        }
+    }
+
+    async function loescheVertretungsPaket(verfasserString, datum) {
+        if (!confirm(`Möchtest du die Vertretung "${verfasserString}" wirklich aufheben? Die betroffenen Slots werden gelöscht/zurückgesetzt.`)) return;
+
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?datum=eq.${datum}&verfasser=eq.${verfasserString}`, {
+                method: 'DELETE',
+                headers: {
+                    "apikey": SUPABASE_ANON_KEY,
+                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            });
+
+            if (response.ok) {
+                alert("Vertretung erfolgreich aufgehoben.");
+                updateDisplay();
+                ladeAktiveVertretungenDaten(datum);
+            } else {
+                alert("Fehler beim Löschen in der Datenbank.");
+            }
+        } catch (err) {
+            console.error("Fehler beim Löschen des Vertretungspakets:", err);
+            alert("Netzwerkfehler beim Löschen.");
+        }
+    }
+
+
+    
     
 /* ============================================================
    12. PASTE-MODE
@@ -15330,6 +15577,11 @@ document.addEventListener('click', (e) => {
         closeEmojiModal();
     }
 });
+
+
+
+
+
     
     
 /* ============================================================
