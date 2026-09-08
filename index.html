@@ -13649,7 +13649,7 @@ window.cancelAddMode = function() {
 
 
 /* ============================================================
-       11.11. STV eintragen & Übersicht (Neues Erfassungs-Modul im Stile des Tagesplans)
+       11.11. STV Übersicht & Erfassung (Inkl. bestehender Vertretungen)
        ============================================================ */
 
     let stvEintragDatum = new Date().toISOString().split('T')[0];
@@ -13657,17 +13657,139 @@ window.cancelAddMode = function() {
     let erfassungsAllDay = false;
 
     function oeffneVertretungsDialog() {
-        // Beim Klick im Menü wird nun direkt wieder die Übersicht geöffnet
-        if (typeof oeffneVertretungsUebersicht === 'function') {
-            oeffneVertretungsUebersicht();
-        } else if (typeof renderStellvertretung === 'function') {
-            renderStellvertretung();
-        } else {
-            oeffneNeuenStvEintragDialog();
+        // Öffnet nun wie gewünscht zuerst die Übersicht aller Vertretungen
+        oeffneVertretungsUebersicht();
+    }
+
+    async function oeffneVertretungsUebersicht() {
+        const existingModal = document.getElementById('vertretungs-uebersicht-modal');
+        if (existingModal) existingModal.remove();
+
+        const modalHtml = `
+            <div id="vertretungs-uebersicht-modal" class="modal-overlay" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20000; justify-content: center; align-items: center;">
+                <div class="modal-content" style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 650px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h2 style="color: #fff; margin: 0 0 5px 0; font-size: 20px;">Vertretungs-Übersicht</h2>
+                            <p style="font-size: 0.85em; color: #aaa; margin: 0;">Aktuelle und kommende Stellvertretungen im System.</p>
+                        </div>
+                        <button type="button" class="btn-action btn-primary" onclick="oeffneNeuenStvEintragDialog()" style="padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 5px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">add</span> Neu eintragen
+                        </button>
+                    </div>
+
+                    <div id="stv-uebersicht-liste" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; padding-right: 4px;">
+                        <div style="color: #aaa; text-align: center; padding: 20px;">Lade Vertretungen...</div>
+                    </div>
+
+                    <div class="modal-actions" style="display: flex; justify-content: flex-end;">
+                        <button type="button" class="btn-action btn-secondary" onclick="document.getElementById('vertretungs-uebersicht-modal').remove();">Schliessen</button>
+                    </div>
+
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        await ladeVertretungsUebersichtDaten();
+    }
+
+    async function ladeVertretungsUebersichtDaten() {
+        const listeContainer = document.getElementById('stv-uebersicht-liste');
+        if (!listeContainer) return;
+
+        try {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=*&gte.datum=${todayStr}&order=datum.asc,slot.asc`, {
+                headers: {
+                    "apikey": SUPABASE_ANON_KEY,
+                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            });
+            const data = await response.json();
+
+            // Filtere Einträge, die eine Stellvertretung enthalten (enthalten "___erfasst:" oder "(für:")
+            const stvEintraege = Array.isArray(data) ? data.filter(item => {
+                const v = item.verfasser || "";
+                return v.includes("(für:") || v.includes("___erfasst:");
+            }) : [];
+
+            if (stvEintraege.length === 0) {
+                listeContainer.innerHTML = '<div style="color: #888; text-align: center; padding: 30px; background: #252525; border-radius: 6px;">Keine aktiven Stellvertretungen gefunden.</div>';
+                return;
+            }
+
+            let html = '';
+            stvEintraege.forEach(item => {
+                const [jahr, monat, tag] = item.datum.split('-');
+                const datumFormatted = `${tag}.${monat}.${jahr}`;
+                
+                let uebernehmend = "Unbekannt";
+                let ausfallend = "Unbekannt";
+                
+                if (item.verfasser) {
+                    let parts = item.verfasser.split(' (für:');
+                    uebernehmend = parts[0].replace('___erfasst:', '').trim();
+                    if (parts[1]) {
+                        ausfallend = parts[1].split('___erfasst:')[0].replace(')', '').trim();
+                    }
+                }
+
+                let zeitString = (typeof getLektionZeit === 'function') ? getLektionZeit(Math.floor((item.slot - 1) / 5) + 1) : `Slot ${item.slot}`;
+
+                html += `
+                    <div style="background: #2a2a2a; border: 1px solid #444; border-left: 4px solid #e67e22; padding: 12px 15px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 14px; color: #fff; margin-bottom: 3px;">
+                                ${datumFormatted} — ${zeitString} (Klasse: ${item.klasse || 'k.A.'})
+                            </div>
+                            <div style="font-size: 12px; color: #aaa;">
+                                <strong style="color: #e67e22;">${uebernehmend}</strong> vertritt <strong style="color: #fff;">${ausfallend}</strong>
+                            </div>
+                        </div>
+                        <button type="button" onclick="loescheVertretungEintrag(${item.id})" style="background: none; border: none; color: #e74c3c; cursor: pointer; display: flex; align-items: center;" title="Vertretung aufheben">
+                            <span class="material-symbols-outlined" style="font-size: 20px;">delete</span>
+                        </button>
+                    </div>
+                `;
+            });
+
+            listeContainer.innerHTML = html;
+
+        } catch (err) {
+            console.error("Fehler beim Laden der Vertretungsübersicht:", err);
+            listeContainer.innerHTML = '<div style="color: #e74c3c; text-align: center; padding: 20px;">Fehler beim Laden der Daten.</div>';
+        }
+    }
+
+    async function loescheVertretungEintrag(id) {
+        if (!confirm("Möchtest du diese Stellvertretung wirklich aufheben?")) return;
+
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?id=eq.${id}`, {
+                method: 'DELETE',
+                headers: {
+                    "apikey": SUPABASE_ANON_KEY,
+                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            });
+
+            if (!res.ok) throw new Error("Fehler beim Löschen");
+
+            await ladeVertretungsUebersichtDaten();
+            if (typeof updateDisplay === 'function') updateDisplay();
+
+        } catch (err) {
+            console.error("Fehler beim Löschen der Vertretung:", err);
+            alert("Fehler beim Löschen: " + (err.message || err));
         }
     }
 
     function oeffneNeuenStvEintragDialog() {
+        const uebersichtModal = document.getElementById('vertretungs-uebersicht-modal');
+        if (uebersichtModal) uebersichtModal.style.display = 'none'; // Übersicht ausblenden während Erfassung
+
         const existingModal = document.getElementById('vertretungs-erfassungs-modal');
         if (existingModal) existingModal.remove();
 
@@ -13676,7 +13798,7 @@ window.cancelAddMode = function() {
         fetchedErfassungsLektionen = [];
 
         const modalHtml = `
-            <div id="vertretungs-erfassungs-modal" class="modal-overlay" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20000; justify-content: center; align-items: center;">
+            <div id="vertretungs-erfassungs-modal" class="modal-overlay" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20005; justify-content: center; align-items: center;">
                 <div class="modal-content" style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 550px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
                     
                     <div class="modal-header-icon">
@@ -13686,7 +13808,7 @@ window.cancelAddMode = function() {
                     <h2 style="color: #fff; text-align: left; margin-bottom: 5px;">Stellvertretung eintragen</h2>
                     <p style="font-size: 0.85em; color: #aaa; margin-bottom: 20px;">Wählen Sie die Lehrpersonen und das Datum für die Vertretung aus.</p>
                     
-                    <!-- STEP 1: Auswahl der Lehrpersonen und des Datums -->
+                    <!-- STEP 1 -->
                     <div id="stv-erfassungs-step-1">
                         <div style="margin-bottom: 15px;">
                             <label style="display: block; font-size: 12px; color: #aaa; margin-bottom: 5px;">Ausfallende Lehrperson:</label>
@@ -13718,11 +13840,11 @@ window.cancelAddMode = function() {
 
                         <div class="modal-actions" style="margin-top: 15px;">
                             <button type="button" class="btn-action btn-primary" onclick="ladeTagesLektionenFuerErfassung()">Weiter</button>
-                            <button type="button" class="btn-action btn-secondary" onclick="document.getElementById('vertretungs-erfassungs-modal').remove(); if(typeof oeffneVertretungsUebersicht==='function') oeffneVertretungsUebersicht();">Abbrechen</button>
+                            <button type="button" class="btn-action btn-secondary" onclick="schliesseErfassungsDialogUndZeigeUebersicht();">Abbrechen</button>
                         </div>
                     </div>
 
-                    <!-- STEP 2: Lektionen im Stile des Tagesplans laden und auswählen -->
+                    <!-- STEP 2 -->
                     <div id="stv-erfassungs-step-2" style="display: none;">
                         <p id="stv-erfassungs-step2-info" style="font-size: 0.85em; color: #aaa; margin-bottom: 15px;"></p>
                         
@@ -13730,7 +13852,7 @@ window.cancelAddMode = function() {
                             Alle Lektionen markieren
                         </button>
 
-                        <div id="stv-erfassungs-tagesplan-container" style="max-height: 280px; overflow-y: auto; display: flex; flexDirection: column; gap: 6px; padding-right: 4px;"></div>
+                        <div id="stv-erfassungs-tagesplan-container" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;"></div>
                         
                         <div class="modal-actions" style="margin-top: 20px;">
                             <button type="button" class="btn-action btn-secondary" onclick="document.getElementById('stv-erfassungs-step-2').style.display='none'; document.getElementById('stv-erfassungs-step-1').style.display='block';">Zurück</button>
@@ -13741,8 +13863,8 @@ window.cancelAddMode = function() {
                 </div>
             </div>
 
-            <!-- Kalender-Popup für die Erfassung -->
-            <div id="stv-erfassungs-calendar-modal" class="stvcal-backdrop" style="display: none; z-index: 20001;">
+            <!-- Kalender-Popup -->
+            <div id="stv-erfassungs-calendar-modal" class="stvcal-backdrop" style="display: none; z-index: 20006;">
                 <div class="stvcal-container" onclick="event.stopPropagation()">
                     <h3 class="stvcal-title">DATUM WÄHLEN</h3>
                     <div id="stvcal-erfassungs-nav" class="stvcal-month-nav"></div>
@@ -13758,6 +13880,18 @@ window.cancelAddMode = function() {
         fuelleLehrpersonenDropdowns();
     }
 
+    function schliesseErfassungsDialogUndZeigeUebersicht() {
+        const erfassungModal = document.getElementById('vertretungs-erfassungs-modal');
+        if (erfassungModal) erfassungModal.remove();
+
+        const uebersichtModal = document.getElementById('vertretungs-uebersicht-modal');
+        if (uebersichtModal) {
+            uebersichtModal.style.display = 'flex';
+        } else {
+            oeffneVertretungsUebersicht();
+        }
+    }
+
     function handleUebernehmendChange() {
         const select = document.getElementById('stv-uebernehmend-select');
         const externContainer = document.getElementById('stv-extern-container');
@@ -13771,6 +13905,7 @@ window.cancelAddMode = function() {
     async function fuelleLehrpersonenDropdowns() {
         const ausfallSelect = document.getElementById('stv-ausfall-select');
         const uebernehmendSelect = document.getElementById('stv-uebernehmend-select');
+        if (!ausfallSelect || !uebernehmendSelect) return;
 
         try {
             const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=verfasser`, {
@@ -13818,23 +13953,23 @@ window.cancelAddMode = function() {
 
     function aktualisiereErfassungsDatumAnzeige() {
         const textSpan = document.getElementById('stv-erfassungs-date-text');
-        if (stvEintragDatum) {
+        if (textSpan && stvEintragDatum) {
             const [jahr, monat, tag] = stvEintragDatum.split('-');
             textSpan.innerText = `${tag}.${monat}.${jahr}`;
-        } else {
-            textSpan.innerText = 'Bitte Datum wählen...';
         }
     }
 
     let stvErfassungsCalDate = new Date();
 
     function openStvErfassungsCalendar() {
-        document.getElementById('stv-erfassungs-calendar-modal').style.display = 'flex';
+        const cal = document.getElementById('stv-erfassungs-calendar-modal');
+        if (cal) cal.style.display = 'flex';
         renderStvErfassungsCalendar();
     }
 
     function closeStvErfassungsCalendar() {
-        document.getElementById('stv-erfassungs-calendar-modal').style.display = 'none';
+        const cal = document.getElementById('stv-erfassungs-calendar-modal');
+        if (cal) cal.style.display = 'none';
     }
 
     function renderStvErfassungsCalendar() {
@@ -13843,6 +13978,7 @@ window.cancelAddMode = function() {
 
         const navContainer = document.getElementById('stvcal-erfassungs-nav');
         const gridContainer = document.getElementById('stvcal-erfassungs-grid');
+        if (!navContainer || !gridContainer) return;
 
         const months = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
         navContainer.innerHTML = `
@@ -13920,7 +14056,6 @@ window.cancelAddMode = function() {
             const wtArr = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
             const aktuellerWochentag = wtArr[dateObj.getDay()];
 
-            // 1. Master-Daten laden
             const { data: masterData, error: masterError } = await window.supabaseClient
                 .from('master_db')
                 .select('*')
@@ -13928,7 +14063,6 @@ window.cancelAddMode = function() {
 
             if (masterError) throw masterError;
 
-            // 2. Tagesbuchungen laden
             const { data: buchungenData, error: buchungenError } = await window.supabaseClient
                 .from('buchungen_db')
                 .select('*')
@@ -13936,7 +14070,6 @@ window.cancelAddMode = function() {
 
             if (buchungenError) throw buchungenError;
 
-            // 3. Plan-Objekt initialisieren (Slots 1 bis 60)
             const planObj = {};
             for (let i = 1; i <= 60; i++) {
                 planObj[i] = { klasse: "", lehrer: "", halle: "", typ: "", verfasser: "", kommentar: "", material: "", details: "" };
@@ -13969,7 +14102,6 @@ window.cancelAddMode = function() {
                 });
             }
 
-            // 4. In 12 Tageslektionen aufteilen und nach ausfallender LP filtern
             fetchedErfassungsLektionen = [];
             erfassungsAllDay = false;
 
@@ -13983,8 +14115,6 @@ window.cancelAddMode = function() {
                     let slotData = planObj[s];
                     if (slotData && slotData.klasse && slotData.klasse.trim() !== "") {
                         let slotLehrer = slotData.lehrer ? slotData.lehrer.toLowerCase().trim() : "";
-                        
-                        // Prüfen ob die Lehrperson in diesem Slot unterrichtet (entweder im Master oder überschrieben im verfasser)
                         let match = slotLehrer === ausfall || (slotData.verfasser && slotData.verfasser.toLowerCase().includes(ausfall));
                         
                         if (match) {
@@ -13997,7 +14127,7 @@ window.cancelAddMode = function() {
                     }
                 }
 
-                let zeitString = getLektionZeit(lektionNr);
+                let zeitString = (typeof getLektionZeit === 'function') ? getLektionZeit(lektionNr) : `Lektion ${lektionNr}`;
 
                 fetchedErfassungsLektionen.push({
                     lektionNr: lektionNr,
@@ -14024,6 +14154,7 @@ window.cancelAddMode = function() {
 
     function renderErfassungsLektionenList() {
         const container = document.getElementById('stv-erfassungs-tagesplan-container');
+        if (!container) return;
         container.innerHTML = '';
 
         fetchedErfassungsLektionen.forEach((item, index) => {
@@ -14186,7 +14317,6 @@ window.cancelAddMode = function() {
         let eingeloggterLp = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : (window.currentLp || 'admin');
         const verfasserString = `${uebernehmend} (für: ${ausfall})___erfasst:${eingeloggterLp}`;
 
-        // Sammelt NUR die spezifischen Slot-IDs, die auch tatsächlich der ausfallenden LP gehören
         let ausgewaehlteSlots = [];
         selectedLektionen.forEach(l => {
             l.eintraege.forEach(e => {
@@ -14204,7 +14334,6 @@ window.cancelAddMode = function() {
 
         try {
             for (const slotId of ausgewaehlteSlots) {
-                // Prüfen ob bereits ein Eintrag in buchungen_db für diesen Slot & Datum existiert
                 const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=id,slot&datum=eq.${stvEintragDatum}&slot=eq.${slotId}`, {
                     headers: {
                         "apikey": SUPABASE_ANON_KEY,
@@ -14214,7 +14343,6 @@ window.cancelAddMode = function() {
                 const existing = await checkRes.json();
 
                 if (existing && existing.length > 0) {
-                    // Update bestehender Buchung
                     const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?datum=eq.${stvEintragDatum}&slot=eq.${slotId}`, {
                         method: 'PATCH',
                         headers: {
@@ -14227,7 +14355,6 @@ window.cancelAddMode = function() {
                     });
                     if (!updateRes.ok) throw new Error("Fehler beim Aktualisieren (PATCH)");
                 } else {
-                    // Falls noch kein Datensatz in buchungen_db existiert, holen wir die Klasse/Halle aus dem Master
                     const masterRes = await fetch(`${SUPABASE_URL}/rest/v1/master_db?select=klasse,halle,wochentag&slot=eq.${slotId}`, {
                         headers: {
                             "apikey": SUPABASE_ANON_KEY,
@@ -14268,10 +14395,14 @@ window.cancelAddMode = function() {
                 }
             }
 
-            document.getElementById('vertretungs-erfassungs-modal').remove();
+            const erfassungModal = document.getElementById('vertretungs-erfassungs-modal');
+            if (erfassungModal) erfassungModal.remove();
+
             alert("Stellvertretung erfolgreich eingetragen!");
+            
+            // Wieder die Übersicht öffnen und aktualisieren
+            oeffneVertretungsUebersicht();
             if (typeof updateDisplay === 'function') updateDisplay();
-            if (typeof oeffneVertretungsUebersicht === 'function') oeffneVertretungsUebersicht();
 
         } catch (err) {
             console.error("Fehler beim Speichern der Stellvertretung:", err);
