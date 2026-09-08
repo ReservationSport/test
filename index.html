@@ -14181,15 +14181,22 @@ window.cancelAddMode = function() {
         let eingeloggterLp = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : (window.currentLp || 'admin');
         const verfasserString = `${uebernehmend} (für: ${ausfall})___erfasst:${eingeloggterLp}`;
 
-        // Sammelt alle Slot-IDs der ausgewählten Lektionen (jede Lektion besteht aus 5 Slots)
+        // Sammelt NUR die spezifischen Slot-IDs, die auch tatsächlich der ausfallenden LP gehören
         let ausgewaehlteSlots = [];
         selectedLektionen.forEach(l => {
-            let startSlot = (l.lektionNr - 1) * 5 + 1;
-            let endSlot = l.lektionNr * 5;
-            for (let s = startSlot; s <= endSlot; s++) {
-                ausgewaehlteSlots.push(s);
-            }
+            l.eintraege.forEach(e => {
+                // Prüfen, ob dieser konkrete Eintrag zur ausfallenden LP gehört
+                let slotLehrer = e.lehrer ? e.lehrer.toLowerCase().trim() : "";
+                if (slotLehrer === ausfall) {
+                    ausgewaehlteSlots.push(e.slotId);
+                }
+            });
         });
+
+        if (ausgewaehlteSlots.length === 0) {
+            alert("Es wurden keine passenden Lektionen für diese Lehrperson in den gewählten Slots gefunden.");
+            return;
+        }
 
         try {
             for (const slotId of ausgewaehlteSlots) {
@@ -14203,7 +14210,8 @@ window.cancelAddMode = function() {
                 const existing = await checkRes.json();
 
                 if (existing && existing.length > 0) {
-                    await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?datum=eq.${stvEintragDatum}&slot=eq.${slotId}`, {
+                    // Update bestehender Buchung
+                    const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?datum=eq.${stvEintragDatum}&slot=eq.${slotId}`, {
                         method: 'PATCH',
                         headers: {
                             "apikey": SUPABASE_ANON_KEY,
@@ -14213,9 +14221,37 @@ window.cancelAddMode = function() {
                         },
                         body: JSON.stringify({ verfasser: verfasserString })
                     });
+                    if (!updateRes.ok) throw new Error("Fehler beim Aktualisieren (PATCH)");
                 } else {
-                    // Falls noch kein Datensatz in buchungen_db existiert (z. B. reine Master-Daten), legen wir einen an
-                    await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db`, {
+                    // Falls noch kein Datensatz in buchungen_db existiert, holen wir die Klasse/Halle aus dem Master, damit sie erhalten bleibt
+                    const masterRes = await fetch(`${SUPABASE_URL}/rest/v1/master_db?select=klasse,halle,wochentag&slot=eq.${slotId}`, {
+                        headers: {
+                            "apikey": SUPABASE_ANON_KEY,
+                            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    });
+                    const masterData = await masterRes.json();
+                    
+                    let payloadData = {
+                        datum: stvEintragDatum,
+                        slot: slotId,
+                        verfasser: verfasserString
+                    };
+
+                    if (Array.isArray(masterData) && masterData.length > 0) {
+                        // Wochentag des Datums ermitteln, um den passenden Master-Eintrag zu treffen
+                        const dateObj = new Date(stvEintragDatum.replace(/-/g, "/"));
+                        const wtArr = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+                        const aktuellerWochentag = wtArr[dateObj.getDay()];
+                        
+                        const passenderMaster = masterData.find(m => m.wochentag === aktuellerWochentag);
+                        if (passenderMaster) {
+                            if (passenderMaster.klasse) payloadData.klasse = passenderMaster.klasse;
+                            if (passenderMaster.halle) payloadData.halle = passenderMaster.halle;
+                        }
+                    }
+
+                    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db`, {
                         method: 'POST',
                         headers: {
                             "apikey": SUPABASE_ANON_KEY,
@@ -14223,23 +14259,20 @@ window.cancelAddMode = function() {
                             "Content-Type": "application/json",
                             "Prefer": "return=minimal"
                         },
-                        body: JSON.stringify({
-                            datum: stvEintragDatum,
-                            slot: slotId,
-                            verfasser: verfasserString
-                        })
+                        body: JSON.stringify(payloadData)
                     });
+                    if (!insertRes.ok) throw new Error("Fehler beim Erstellen (POST)");
                 }
             }
 
             document.getElementById('vertretungs-erfassungs-modal').remove();
             alert("Stellvertretung erfolgreich eingetragen!");
             if (typeof updateDisplay === 'function') updateDisplay();
-            oeffneVertretungsUebersicht();
+            if (typeof oeffneVertretungsUebersicht === 'function') oeffneVertretungsUebersicht();
 
         } catch (err) {
             console.error("Fehler beim Speichern der Stellvertretung:", err);
-            alert("Fehler beim Aktualisieren der Datenbank.");
+            alert("Fehler beim Aktualisieren der Datenbank: " + (err.message || err));
         }
     }
 
