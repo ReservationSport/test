@@ -13651,12 +13651,12 @@ window.cancelAddMode = function() {
 
 
 /* ============================================================
-       11.11. STV eintragen & Übersicht (Neues Erfassungs-Modul)
+       11.11. STV eintragen & Übersicht (Neues Erfassungs-Modul im Stile des Tagesplans)
        ============================================================ */
 
-    // Globale Variablen für den Erfassungsdialog
     let stvEintragDatum = new Date().toISOString().split('T')[0];
-    let gefundeneTagesLektionenAusfall = [];
+    let fetchedErfassungsLektionen = [];
+    let erfassungsAllDay = false;
 
     function oeffneVertretungsDialog() {
         oeffneNeuenStvEintragDialog();
@@ -13667,10 +13667,12 @@ window.cancelAddMode = function() {
         if (existingModal) existingModal.remove();
 
         stvEintragDatum = new Date().toISOString().split('T')[0];
+        erfassungsAllDay = false;
+        fetchedErfassungsLektionen = [];
 
         const modalHtml = `
             <div id="vertretungs-erfassungs-modal" class="modal-overlay" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20000; justify-content: center; align-items: center;">
-                <div class="modal-content" style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
+                <div class="modal-content" style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 550px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
                     
                     <div class="modal-header-icon">
                         <span class="material-symbols-outlined">person_search</span>
@@ -13679,8 +13681,8 @@ window.cancelAddMode = function() {
                     <h2 style="color: #fff; text-align: left; margin-bottom: 5px;">Stellvertretung eintragen</h2>
                     <p style="font-size: 0.85em; color: #aaa; margin-bottom: 20px;">Wählen Sie die Lehrpersonen und das Datum für die Vertretung aus.</p>
                     
+                    <!-- STEP 1: Auswahl der Lehrpersonen und des Datums -->
                     <div id="stv-erfassungs-step-1">
-                        <!-- Ausfallende LP (Dropdown) -->
                         <div style="margin-bottom: 15px;">
                             <label style="display: block; font-size: 12px; color: #aaa; margin-bottom: 5px;">Ausfallende Lehrperson:</label>
                             <select id="stv-ausfall-select" class="stellvertretung-input" style="width: 100%; padding: 10px; background: #2c2c2c; border: 1px solid #444; color: #fff; border-radius: 4px;">
@@ -13688,7 +13690,6 @@ window.cancelAddMode = function() {
                             </select>
                         </div>
 
-                        <!-- Übernehmende LP (Dropdown + Externe Option) -->
                         <div style="margin-bottom: 15px;">
                             <label style="display: block; font-size: 12px; color: #aaa; margin-bottom: 5px;">Übernehmende Lehrperson:</label>
                             <select id="stv-uebernehmend-select" class="stellvertretung-input" onchange="handleUebernehmendChange()" style="width: 100%; padding: 10px; background: #2c2c2c; border: 1px solid #444; color: #fff; border-radius: 4px;">
@@ -13697,13 +13698,11 @@ window.cancelAddMode = function() {
                             </select>
                         </div>
 
-                        <!-- Manuelles Kürzel für externe Vertretung (initial versteckt) -->
                         <div id="stv-extern-container" style="margin-bottom: 15px; display: none;">
                             <label style="display: block; font-size: 12px; color: #aaa; margin-bottom: 5px;">Kürzel externe Vertretung:</label>
                             <input type="text" id="stv-extern-input" placeholder="z.B. ext_mue" class="stellvertretung-input" style="width: 100%; padding: 10px; background: #2c2c2c; border: 1px solid #444; color: #fff; border-radius: 4px;">
                         </div>
 
-                        <!-- Datumsauswahl (Analog zu Stellvertretung suchen) -->
                         <div style="margin-bottom: 20px;">
                             <label style="display: block; font-size: 12px; color: #aaa; margin-bottom: 5px;">Datum:</label>
                             <div id="stv-erfassungs-date-display" onclick="openStvErfassungsCalendar()" class="stellvertretung-input" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; width: 100%; padding: 10px; background: #2c2c2c; border: 1px solid #444; color: #fff; border-radius: 4px;">
@@ -13718,14 +13717,15 @@ window.cancelAddMode = function() {
                         </div>
                     </div>
 
+                    <!-- STEP 2: Lektionen im Stile des Tagesplans laden und auswählen -->
                     <div id="stv-erfassungs-step-2" style="display: none;">
                         <p id="stv-erfassungs-step2-info" style="font-size: 0.85em; color: #aaa; margin-bottom: 15px;"></p>
                         
-                        <button type="button" class="btn-action btn-primary stv-toggle-btn" id="btn-toggle-erfassungs-lessons" onclick="toggleAllErfassungsLessons()" style="margin-bottom: 15px; width: 100%;">
+                        <button type="button" class="btn-action btn-primary" id="btn-toggle-erfassungs-all" onclick="toggleAllErfassungsLessons()" style="margin-bottom: 15px; width: 100%;">
                             Alle Lektionen markieren
                         </button>
 
-                        <div id="stv-erfassungs-lektionen-container" class="stellvertretung-list" style="max-height: 250px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; border: 1px solid #444;"></div>
+                        <div id="stv-erfassungs-tagesplan-container" style="max-height: 280px; overflow-y: auto; display: flex; flexDirection: column; gap: 6px; padding-right: 4px;"></div>
                         
                         <div class="modal-actions" style="margin-top: 20px;">
                             <button type="button" class="btn-action btn-secondary" onclick="document.getElementById('stv-erfassungs-step-2').style.display='none'; document.getElementById('stv-erfassungs-step-1').style.display='block';">Zurück</button>
@@ -13736,7 +13736,7 @@ window.cancelAddMode = function() {
                 </div>
             </div>
 
-            <!-- Integriertes Kalender-Popup für die Erfassung -->
+            <!-- Kalender-Popup für die Erfassung -->
             <div id="stv-erfassungs-calendar-modal" class="stvcal-backdrop" style="display: none; z-index: 20001;">
                 <div class="stvcal-container" onclick="event.stopPropagation()">
                     <h3 class="stvcal-title">DATUM WÄHLEN</h3>
@@ -13749,9 +13749,7 @@ window.cancelAddMode = function() {
 
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         
-        // Datum initialisieren
         aktualisiereErfassungsDatumAnzeige();
-        // Lehrpersonen in Dropdowns laden
         fuelleLehrpersonenDropdowns();
     }
 
@@ -13770,8 +13768,7 @@ window.cancelAddMode = function() {
         const uebernehmendSelect = document.getElementById('stv-uebernehmend-select');
 
         try {
-            // Holt alle Lehrpersonen-Kürzel direkt aus der lp_db
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/lp_db?select=kuerzel`, {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=verfasser`, {
                 headers: {
                     "apikey": SUPABASE_ANON_KEY,
                     "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
@@ -13782,35 +13779,16 @@ window.cancelAddMode = function() {
             let lpSet = new Set();
             if (Array.isArray(data)) {
                 data.forEach(item => {
-                    // Falls die Spalte in Supabase eventuell anders heisst (z.B. grosses K oder 'kuerzel'), fangen wir das ab
-                    const kuerzelVal = item.kuerzel || item.Kuerzel;
-                    if (kuerzelVal) {
-                        lpSet.add(kuerzelVal.trim().toLowerCase());
+                    if (item.verfasser) {
+                        let cleanVerfasser = item.verfasser.split(' (für:')[0].split('___erfasst:')[0].trim().toLowerCase();
+                        if (cleanVerfasser) {
+                            lpSet.add(cleanVerfasser);
+                        }
                     }
                 });
             }
 
             let lpListe = Array.from(lpSet).sort();
-
-            // Fallback: Falls lp_db leer ist oder fehlschlägt, alternativ einmalig aus buchungen_db lesen
-            if (lpListe.length === 0) {
-                const fallbackResponse = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=verfasser`, {
-                    headers: {
-                        "apikey": SUPABASE_ANON_KEY,
-                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
-                const fallbackData = await fallbackResponse.json();
-                if (Array.isArray(fallbackData)) {
-                    fallbackData.forEach(item => {
-                        if (item.verfasser) {
-                            let k = item.verfasser.split(' (für:')[0].split('___erfasst:')[0].trim().toLowerCase();
-                            if (k) lpSet.add(k);
-                        }
-                    });
-                    lpListe = Array.from(lpSet).sort();
-                }
-            }
 
             let optionsHtml = '<option value="">Bitte wählen...</option>';
             lpListe.forEach(lp => {
@@ -13833,7 +13811,6 @@ window.cancelAddMode = function() {
         }
     }
 
-    
     function aktualisiereErfassungsDatumAnzeige() {
         const textSpan = document.getElementById('stv-erfassungs-date-text');
         if (stvEintragDatum) {
@@ -13844,7 +13821,6 @@ window.cancelAddMode = function() {
         }
     }
 
-    // Kalender Logik für Erfassung (nach dem Vorbild von openStvCalendar)
     let stvErfassungsCalDate = new Date();
 
     function openStvErfassungsCalendar() {
@@ -13919,8 +13895,8 @@ window.cancelAddMode = function() {
         closeStvErfassungsCalendar();
     }
 
-   async function ladeTagesLektionenFuerErfassung() {
-        const ausfall = document.getElementById('stv-ausfall-select').value;
+    async function ladeTagesLektionenFuerErfassung() {
+        const ausfall = document.getElementById('stv-ausfall-select').value.toLowerCase().trim();
         const uebernehmendDropdown = document.getElementById('stv-uebernehmend-select').value;
         const externInput = document.getElementById('stv-extern-input').value.trim().toLowerCase();
 
@@ -13935,32 +13911,96 @@ window.cancelAddMode = function() {
         }
 
         try {
-            // Lädt alle Lektionen des Tages
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=slot,klasse,halle,verfasser&datum=eq.${stvEintragDatum}`, {
-                headers: {
-                    "apikey": SUPABASE_ANON_KEY,
-                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-                }
-            });
-            
-            const alleTagesLektionen = await response.json();
+            const dateObj = new Date(stvEintragDatum.replace(/-/g, "/"));
+            const wtArr = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+            const aktuellerWochentag = wtArr[dateObj.getDay()];
 
-            if (!Array.isArray(alleTagesLektionen)) {
-                alert("Fehler beim Abrufen der Lektionen aus der Datenbank.");
-                return;
+            // 1. Master-Daten laden
+            const { data: masterData, error: masterError } = await window.supabaseClient
+                .from('master_db')
+                .select('*')
+                .eq('wochentag', aktuellerWochentag);
+
+            if (masterError) throw masterError;
+
+            // 2. Tagesbuchungen laden
+            const { data: buchungenData, error: buchungenError } = await window.supabaseClient
+                .from('buchungen_db')
+                .select('*')
+                .eq('datum', stvEintragDatum);
+
+            if (buchungenError) throw buchungenError;
+
+            // 3. Plan-Objekt initialisieren (Slots 1 bis 60)
+            const planObj = {};
+            for (let i = 1; i <= 60; i++) {
+                planObj[i] = { klasse: "", lehrer: "", halle: "", typ: "", verfasser: "", kommentar: "", material: "", details: "" };
             }
 
-            // Robustere Filterung: Prüft, ob das Kürzel im verfasser-String enthalten ist (egal ob exakt, groß/klein oder als Vertretung)
-            gefundeneTagesLektionenAusfall = alleTagesLektionen.filter(l => {
-                if (!l.verfasser) return false;
-                let v = l.verfasser.toLowerCase();
-                // Prüft exakten Match oder ob es im String (z.B. bei bestehenden Zusätzen) vorkommt
-                return v === ausfall || v.includes(ausfall);
-            });
+            if (masterData) {
+                masterData.forEach(row => {
+                    if (planObj[row.slot]) {
+                        planObj[row.slot].klasse = row.klasse ? row.klasse.toString() : "";
+                        planObj[row.slot].lehrer = row.lehrer ? row.lehrer.toString() : "";
+                    }
+                });
+            }
 
-            if (gefundeneTagesLektionenAusfall.length === 0) {
-                alert(`Keine Lektionen für "${ausfall}" am ${stvEintragDatum} gefunden.`);
-                return;
+            if (buchungenData) {
+                buchungenData.forEach(row => {
+                    const slot = row.slot;
+                    if (planObj[slot]) {
+                        const klasseAusDB = row.klasse ? row.klasse.toString().trim() : "";
+                        if (klasseAusDB.toLowerCase() === "verschoben") {
+                            planObj[slot].klasse = "";
+                            planObj[slot].lehrer = "";
+                            planObj[slot].verfasser = "";
+                        } else {
+                            if (klasseAusDB !== "") planObj[slot].klasse = klasseAusDB;
+                            if (row.halle) planObj[slot].halle = row.halle.toString();
+                            if (row.verfasser) planObj[slot].verfasser = row.verfasser.toString();
+                        }
+                    }
+                });
+            }
+
+            // 4. In 12 Tageslektionen aufteilen und nach ausfallender LP filtern
+            fetchedErfassungsLektionen = [];
+            erfassungsAllDay = false;
+
+            for (let lektionNr = 1; lektionNr <= 12; lektionNr++) {
+                let startSlot = (lektionNr - 1) * 5 + 1;
+                let endSlot = lektionNr * 5;
+                
+                let lektionEintraege = [];
+
+                for (let s = startSlot; s <= endSlot; s++) {
+                    let slotData = planObj[s];
+                    if (slotData && slotData.klasse && slotData.klasse.trim() !== "") {
+                        let slotLehrer = slotData.lehrer ? slotData.lehrer.toLowerCase().trim() : "";
+                        
+                        // Prüfen ob die Lehrperson in diesem Slot unterrichtet (entweder im Master oder überschrieben im verfasser)
+                        let match = slotLehrer === ausfall || (slotData.verfasser && slotData.verfasser.toLowerCase().includes(ausfall));
+                        
+                        if (match) {
+                            lektionEintraege.push({
+                                slotId: s,
+                                klasse: slotData.klasse,
+                                lehrer: slotLehrer
+                            });
+                        }
+                    }
+                }
+
+                let zeitString = getLektionZeit(lektionNr);
+
+                fetchedErfassungsLektionen.push({
+                    lektionNr: lektionNr,
+                    zeit: zeitString,
+                    eintraege: lektionEintraege,
+                    selected: false,
+                    hasLesson: lektionEintraege.length > 0
+                });
             }
 
             document.getElementById('stv-erfassungs-step-1').style.display = 'none';
@@ -13969,17 +14009,7 @@ window.cancelAddMode = function() {
             const [j, m, t] = stvEintragDatum.split('-');
             document.getElementById('stv-erfassungs-step2-info').innerText = `Wähle die Lektionen am ${t}.${m}.${j}, die ${uebernehmend} für ${ausfall} übernimmt:`;
 
-            const container = document.getElementById('stv-erfassungs-lektionen-container');
-            container.innerHTML = '';
-
-            gefundeneTagesLektionenAusfall.forEach((l, index) => {
-                container.innerHTML += `
-                    <label style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer;">
-                        <input type="checkbox" value="${index}" checked class="stv-erfassungs-checkbox" style="margin-right: 12px; transform: scale(1.2);">
-                        <span style="font-size: 0.95em;">Slot / Uhrzeit: <strong>${l.slot}</strong> &bull; Klasse: <strong>${l.klasse}</strong> &bull; LP: <strong>${l.verfasser}</strong></span>
-                    </label>
-                `;
-            });
+            renderErfassungsLektionenList();
 
         } catch (err) {
             console.error("Fehler beim Laden der Tageslektionen:", err);
@@ -13987,13 +14017,148 @@ window.cancelAddMode = function() {
         }
     }
 
-    function toggleAllErfassungsLessons() {
-        const checkboxes = document.querySelectorAll('.stv-erfassungs-checkbox');
-        const btn = document.getElementById('btn-toggle-erfassungs-lessons');
-        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    function renderErfassungsLektionenList() {
+        const container = document.getElementById('stv-erfassungs-tagesplan-container');
+        container.innerHTML = '';
 
-        checkboxes.forEach(cb => cb.checked = !allChecked);
-        btn.innerText = allChecked ? "Alle Lektionen markieren" : "Auswahl aufheben";
+        fetchedErfassungsLektionen.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = `stv-lektion-card ${item.selected ? 'selected' : ''} ${!item.hasLesson ? 'empty-lesson' : ''}`;
+            
+            card.style.display = 'flex';
+            card.style.justifyContent = 'space-between';
+            card.style.alignItems = 'center';
+            card.style.padding = '8px 12px';
+            card.style.borderRadius = '6px';
+            card.style.background = item.hasLesson ? (item.selected ? '#2d2318' : '#2c2c2c') : '#2c2c2c';
+            card.style.border = item.selected ? '1px solid #e67e22' : '1px solid #444';
+            card.style.borderLeft = item.selected ? '4px solid #e67e22' : (item.hasLesson ? '4px solid #e67e22' : '4px solid #444');
+            card.style.cursor = item.hasLesson ? 'pointer' : 'default';
+            card.style.opacity = item.hasLesson ? '1' : '0.4';
+
+            let klassenText = item.hasLesson ? item.eintraege.map(e => e.klasse).join(', ') : 'Keine Lektion';
+
+            card.innerHTML = `
+                <div style="font-weight: 600; font-size: 14px; color: #fff; min-width: 110px;">
+                    ${item.zeit}
+                </div>
+                <div style="flex-grow: 1; margin-left: 15px; font-size: 14px; color: #fff; font-weight: ${item.hasLesson ? '600' : 'normal'};">
+                    ${klassenText}
+                </div>
+                <div style="display: flex; align-items: center;">
+                    ${item.hasLesson ? `
+                        <span class="material-symbols-outlined" style="font-size: 20px; color: ${item.selected ? '#e67e22' : '#666'};">
+                            ${item.selected ? 'check_circle' : 'radio_button_unchecked'}
+                        </span>
+                    ` : ''}
+                </div>
+            `;
+
+            if (item.hasLesson) {
+                card.onclick = () => toggleErfassungsLessonSelection(index, card);
+            }
+
+            container.appendChild(card);
+        });
+    }
+
+    function toggleErfassungsLessonSelection(index, cardElement) {
+        if (!fetchedErfassungsLektionen[index].hasLesson) return;
+
+        fetchedErfassungsLektionen[index].selected = !fetchedErfassungsLektionen[index].selected;
+        
+        const lessonsWithContent = fetchedErfassungsLektionen.filter(l => l.hasLesson);
+        const allAreSelected = lessonsWithContent.length > 0 && lessonsWithContent.every(l => l.selected);
+
+        erfassungsAllDay = allAreSelected;
+
+        const btn = document.getElementById('btn-toggle-erfassungs-all');
+        if (btn) {
+            if (allAreSelected) {
+                btn.style.background = "#b95c00";
+                btn.innerText = "Alle Markierungen entfernen";
+            } else {
+                btn.style.background = ""; 
+                btn.innerText = "Alle Lektionen markieren";
+            }
+        }
+
+        const iconSpan = cardElement.querySelector('.material-symbols-outlined');
+
+        if (fetchedErfassungsLektionen[index].selected) {
+            cardElement.classList.add('selected');
+            cardElement.style.background = '#2d2318';
+            cardElement.style.border = '1px solid #e67e22';
+            cardElement.style.borderLeft = '4px solid #e67e22';
+            if (iconSpan) {
+                iconSpan.innerText = 'check_circle';
+                iconSpan.style.color = '#e67e22';
+            }
+        } else {
+            cardElement.classList.remove('selected');
+            cardElement.style.background = '#2c2c2c';
+            cardElement.style.border = '1px solid #444';
+            cardElement.style.borderLeft = '4px solid #e67e22';
+            if (iconSpan) {
+                iconSpan.innerText = 'radio_button_unchecked';
+                iconSpan.style.color = '#666';
+            }
+        }
+    }
+
+    function toggleAllErfassungsLessons() {
+        erfassungsAllDay = !erfassungsAllDay;
+        
+        const cards = document.querySelectorAll('#stv-erfassungs-tagesplan-container > div');
+        const btn = document.getElementById('btn-toggle-erfassungs-all');
+
+        if (erfassungsAllDay) {
+            if (btn) {
+                btn.style.background = "#b95c00";
+                btn.innerText = "Alle Markierungen entfernen";
+            }
+            
+            fetchedErfassungsLektionen.forEach(l => {
+                if (l.hasLesson) l.selected = true;
+            });
+
+            cards.forEach((card, index) => {
+                if (fetchedErfassungsLektionen[index] && fetchedErfassungsLektionen[index].hasLesson) {
+                    card.classList.add('selected');
+                    card.style.background = '#2d2318';
+                    card.style.border = '1px solid #e67e22';
+                    card.style.borderLeft = '4px solid #e67e22';
+                    const icon = card.querySelector('.material-symbols-outlined');
+                    if (icon) {
+                        icon.innerText = "check_circle";
+                        icon.style.color = "#e67e22";
+                    }
+                }
+            });
+        } else {
+            if (btn) {
+                btn.style.background = ""; 
+                btn.innerText = "Alle Lektionen markieren";
+            }
+            
+            fetchedErfassungsLektionen.forEach(l => {
+                if (l.hasLesson) l.selected = false;
+            });
+
+            cards.forEach((card, index) => {
+                if (fetchedErfassungsLektionen[index] && fetchedErfassungsLektionen[index].hasLesson) {
+                    card.classList.remove('selected');
+                    card.style.background = '#2c2c2c';
+                    card.style.border = '1px solid #444';
+                    card.style.borderLeft = '4px solid #e67e22';
+                    const icon = card.querySelector('.material-symbols-outlined');
+                    if (icon) {
+                        icon.innerText = "radio_button_unchecked";
+                        icon.style.color = "#666";
+                    }
+                }
+            });
+        }
     }
 
     async function speichereNeueStellvertretung() {
@@ -14004,32 +14169,67 @@ window.cancelAddMode = function() {
             uebernehmend = document.getElementById('stv-extern-input').value.trim().toLowerCase();
         }
 
-        let eingeloggterLp = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : (window.currentLp || 'admin');
-        
-        const verfasserString = `${uebernehmend} (für: ${ausfall})___erfasst:${eingeloggterLp}`;
+        let selectedLektionen = erfassungsAllDay 
+            ? fetchedErfassungsLektionen.filter(l => l.hasLesson) 
+            : fetchedErfassungsLektionen.filter(l => l.selected && l.hasLesson);
 
-        const checkboxes = document.querySelectorAll('.stv-erfassungs-checkbox:checked');
-        if (checkboxes.length === 0) {
-            alert("Bitte mindestens eine Lektion auswählen.");
+        if (selectedLektionen.length === 0) {
+            alert("Bitte wähle mindestens eine Lektion aus.");
             return;
         }
 
-        const ausgewaehlteSlots = Array.from(checkboxes).map(cb => gefundeneTagesLektionenAusfall[cb.value].slot);
+        let eingeloggterLp = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : (window.currentLp || 'admin');
+        const verfasserString = `${uebernehmend} (für: ${ausfall})___erfasst:${eingeloggterLp}`;
+
+        // Sammelt alle Slot-IDs der ausgewählten Lektionen (jede Lektion besteht aus 5 Slots)
+        let ausgewaehlteSlots = [];
+        selectedLektionen.forEach(l => {
+            let startSlot = (l.lektionNr - 1) * 5 + 1;
+            let endSlot = l.lektionNr * 5;
+            for (let s = startSlot; s <= endSlot; s++) {
+                ausgewaehlteSlots.push(s);
+            }
+        });
 
         try {
             for (const slotId of ausgewaehlteSlots) {
-                await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?datum=eq.${stvEintragDatum}&slot=eq.${slotId}`, {
-                    method: 'PATCH',
+                // Prüfen ob bereits ein Eintrag in buchungen_db für diesen Slot & Datum existiert
+                const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=id,slot&datum=eq.${stvEintragDatum}&slot=eq.${slotId}`, {
                     headers: {
                         "apikey": SUPABASE_ANON_KEY,
-                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-                        "Content-Type": "application/json",
-                        "Prefer": "return=minimal"
-                    },
-                    body: JSON.stringify({
-                        verfasser: verfasserString
-                    })
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                    }
                 });
+                const existing = await checkRes.json();
+
+                if (existing && existing.length > 0) {
+                    await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?datum=eq.${stvEintragDatum}&slot=eq.${slotId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            "apikey": SUPABASE_ANON_KEY,
+                            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                            "Content-Type": "application/json",
+                            "Prefer": "return=minimal"
+                        },
+                        body: JSON.stringify({ verfasser: verfasserString })
+                    });
+                } else {
+                    // Falls noch kein Datensatz in buchungen_db existiert (z. B. reine Master-Daten), legen wir einen an
+                    await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db`, {
+                        method: 'POST',
+                        headers: {
+                            "apikey": SUPABASE_ANON_KEY,
+                            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                            "Content-Type": "application/json",
+                            "Prefer": "return=minimal"
+                        },
+                        body: JSON.stringify({
+                            datum: stvEintragDatum,
+                            slot: slotId,
+                            verfasser: verfasserString
+                        })
+                    });
+                }
             }
 
             document.getElementById('vertretungs-erfassungs-modal').remove();
