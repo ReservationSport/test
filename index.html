@@ -13649,8 +13649,8 @@ window.cancelAddMode = function() {
 
 
 /* ============================================================
-       11.11. STV Übersicht & Erfassung (Inkl. bestehender Vertretungen)
-       ============================================================ */
+        11.11. STV Übersicht & Erfassung (Inkl. bestehender Vertretungen)
+        ============================================================ */
 
     let stvEintragDatum = new Date().toISOString().split('T')[0];
     let fetchedErfassungsLektionen = [];
@@ -14298,90 +14298,33 @@ window.cancelAddMode = function() {
     }
 
     async function speichereNeueStellvertretung() {
-        const ausfall = document.getElementById('stv-ausfall-select').value.trim().toLowerCase();
+        const ausfall = document.getElementById('stv-ausfall-select').value.toLowerCase().trim();
         const uebernehmendDropdown = document.getElementById('stv-uebernehmend-select').value;
+        const externInput = document.getElementById('stv-extern-input').value.trim().toLowerCase();
+
         let uebernehmend = uebernehmendDropdown;
         if (uebernehmendDropdown === '__extern__') {
-            uebernehmend = document.getElementById('stv-extern-input').value.trim().toLowerCase();
+            uebernehmend = externInput;
         }
 
-        let selectedLektionen = erfassungsAllDay 
-            ? fetchedErfassungsLektionen.filter(l => l.hasLesson) 
-            : fetchedErfassungsLektionen.filter(l => l.selected && l.hasLesson);
-
-        if (selectedLektionen.length === 0) {
-            alert("Bitte wähle mindestens eine Lektion aus.");
+        if (!ausfall || !uebernehmend || !stvEintragDatum) {
+            alert("Bitte alle Pflichtfelder ausfüllen.");
             return;
         }
 
-        let eingeloggterLp = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : (window.currentLp || 'admin');
-        const verfasserString = `${uebernehmend} (für: ${ausfall})___erfasst:${eingeloggterLp}`;
-
-        let ausgewaehlteSlots = [];
-        selectedLektionen.forEach(l => {
-            l.eintraege.forEach(e => {
-                let slotLehrer = e.lehrer ? e.lehrer.toLowerCase().trim() : "";
-                if (slotLehrer === ausfall) {
-                    ausgewaehlteSlots.push(e.slotId);
-                }
-            });
-        });
-
-        if (ausgewaehlteSlots.length === 0) {
-            alert("Es wurden keine passenden Lektionen für diese Lehrperson in den gewählten Slots gefunden.");
+        const selectedLektionen = fetchedErfassungsLektionen.filter(l => l.selected && l.hasLesson);
+        if (selectedLektionen.length === 0) {
+            alert("Bitte wählen Sie mindestens eine Lektion aus.");
             return;
         }
 
         try {
-            for (const slotId of ausgewaehlteSlots) {
-                const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=id,slot&datum=eq.${stvEintragDatum}&slot=eq.${slotId}`, {
-                    headers: {
-                        "apikey": SUPABASE_ANON_KEY,
-                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
-                const existing = await checkRes.json();
+            for (const lek of selectedLektionen) {
+                for (const eintrag of lek.eintraege) {
+                    const slotId = eintrag.slotId;
+                    const verfasserString = `___erfasst:${uebernehmend} (für: ${ausfall})`;
 
-                if (existing && existing.length > 0) {
-                    const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?datum=eq.${stvEintragDatum}&slot=eq.${slotId}`, {
-                        method: 'PATCH',
-                        headers: {
-                            "apikey": SUPABASE_ANON_KEY,
-                            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-                            "Content-Type": "application/json",
-                            "Prefer": "return=minimal"
-                        },
-                        body: JSON.stringify({ verfasser: verfasserString })
-                    });
-                    if (!updateRes.ok) throw new Error("Fehler beim Aktualisieren (PATCH)");
-                } else {
-                    const masterRes = await fetch(`${SUPABASE_URL}/rest/v1/master_db?select=klasse,halle,wochentag&slot=eq.${slotId}`, {
-                        headers: {
-                            "apikey": SUPABASE_ANON_KEY,
-                            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-                        }
-                    });
-                    const masterData = await masterRes.json();
-                    
-                    let payloadData = {
-                        datum: stvEintragDatum,
-                        slot: slotId,
-                        verfasser: verfasserString
-                    };
-
-                    if (Array.isArray(masterData) && masterData.length > 0) {
-                        const dateObj = new Date(stvEintragDatum.replace(/-/g, "/"));
-                        const wtArr = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
-                        const aktuellerWochentag = wtArr[dateObj.getDay()];
-                        
-                        const passenderMaster = masterData.find(m => m.wochentag === aktuellerWochentag);
-                        if (passenderMaster) {
-                            if (passenderMaster.klasse) payloadData.klasse = passenderMaster.klasse;
-                            if (passenderMaster.halle) payloadData.halle = passenderMaster.halle;
-                        }
-                    }
-
-                    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db`, {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db`, {
                         method: 'POST',
                         headers: {
                             "apikey": SUPABASE_ANON_KEY,
@@ -14389,24 +14332,29 @@ window.cancelAddMode = function() {
                             "Content-Type": "application/json",
                             "Prefer": "return=minimal"
                         },
-                        body: JSON.stringify(payloadData)
+                        body: JSON.stringify({
+                            datum: stvEintragDatum,
+                            slot: slotId,
+                            klasse: eintrag.klasse,
+                            verfasser: verfasserString
+                        })
                     });
-                    if (!insertRes.ok) throw new Error("Fehler beim Erstellen (POST)");
+
+                    if (!response.ok) {
+                        throw new Error(`Fehler beim Speichern von Slot ${slotId}`);
+                    }
                 }
             }
 
             const erfassungModal = document.getElementById('vertretungs-erfassungs-modal');
             if (erfassungModal) erfassungModal.remove();
 
-            alert("Stellvertretung erfolgreich eingetragen!");
-            
-            // Wieder die Übersicht öffnen und aktualisieren
-            oeffneVertretungsUebersicht();
             if (typeof updateDisplay === 'function') updateDisplay();
+            oeffneVertretungsUebersicht();
 
         } catch (err) {
             console.error("Fehler beim Speichern der Stellvertretung:", err);
-            alert("Fehler beim Aktualisieren der Datenbank: " + (err.message || err));
+            alert("Fehler beim Speichern: " + (err.message || err));
         }
     }
 
