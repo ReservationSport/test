@@ -13677,6 +13677,9 @@ window.cancelAddMode = function() {
                         <label style="display: block; margin-top: 15px; font-size: 0.9em; color: #ccc;">Ausfallende Lehrperson (Kürzel):</label>
                         <input type="text" id="ausfall-input" placeholder="z.B. seni" style="width: 100%; padding: 10px; margin-top: 5px; background: rgba(255,255,255,0.1); border: 1px solid #555; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 1em;">
 
+                        <label style="display: block; margin-top: 15px; font-size: 0.9em; color: #ccc;">Erfasst durch (Kürzel):</label>
+                        <input type="text" id="erfasst-durch-input" placeholder="z.B. admin" style="width: 100%; padding: 10px; margin-top: 5px; background: rgba(255,255,255,0.1); border: 1px solid #555; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 1em;">
+
                         <label style="display: block; margin-top: 15px; font-size: 0.9em; color: #ccc;">Datum:</label>
                         <input type="date" id="datum-input" value="${todayStr}" style="width: 100%; padding: 10px; margin-top: 5px; background: rgba(255,255,255,0.1); border: 1px solid #555; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 1em;">
 
@@ -13707,10 +13710,11 @@ window.cancelAddMode = function() {
     async function ladeLektionenFuerVertretung() {
         const stv = document.getElementById('stv-input').value.trim().toLowerCase();
         const ausfall = document.getElementById('ausfall-input').value.trim().toLowerCase();
+        const erfasstDurch = document.getElementById('erfasst-durch-input').value.trim().toLowerCase();
         const datum = document.getElementById('datum-input').value;
 
-        if (!stv || !ausfall || !datum) {
-            alert("Bitte alle Felder ausfüllen.");
+        if (!stv || !ausfall || !erfasstDurch || !datum) {
+            alert("Bitte alle Felder inklusive 'Erfasst durch' ausfüllen.");
             return;
         }
 
@@ -13754,8 +13758,11 @@ window.cancelAddMode = function() {
     async function speichereVertretung() {
         const stv = document.getElementById('stv-input').value.trim().toLowerCase();
         const ausfall = document.getElementById('ausfall-input').value.trim().toLowerCase();
+        const erfasstDurch = document.getElementById('erfasst-durch-input').value.trim().toLowerCase();
         const datum = document.getElementById('datum-input').value;
-        const verfasserString = `${stv} (für: ${ausfall})`;
+        
+        // Verfasser-String inklusive verstecktem Erfasser-Marker für die Nachvollziehbarkeit
+        const verfasserString = `${stv} (für: ${ausfall})___erfasst:${erfasstDurch}`;
 
         const checkboxes = document.querySelectorAll('#lektionen-checkbox-container input[type="checkbox"]:checked');
         if (checkboxes.length === 0) {
@@ -13802,13 +13809,13 @@ window.cancelAddMode = function() {
 
         const modalHtml = `
             <div id="vertretungs-uebersicht-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20000; display: flex; justify-content: center; align-items: center;">
-                <div style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 650px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #51ae32; padding-bottom: 10px; margin-bottom: 15px;">
-                        <h3 style="margin: 0; text-transform: uppercase; font-size: 1.3em; letter-spacing: 1px;">Aktive Stellvertretungen (Heute)</h3>
-                        <button type="button" onclick="document.getElementById('vertretungs-uebersicht-modal').remove(); oeffneNeuenStvEintragDialog();" style="padding: 6px 12px; background: #51ae32; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85em;">+ Neue STV erfassen</button>
+                        <h3 style="margin: 0; text-transform: uppercase; font-size: 1.3em; letter-spacing: 1px;">Aktive Stellvertretungen</h3>
+                        <button type="button" onclick="document.getElementById('vertretungs-uebersicht-modal').remove(); oeffneNeuenStvEintragDialog();" style="padding: 6px 12px; background: #51ae32; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85em;">Stellvertretung eintragen</button>
                     </div>
                     
-                    <div id="stv-liste-container" style="max-height: 300px; overflow-y: auto; margin: 15px 0; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; border: 1px solid #444;">
+                    <div id="stv-liste-container" style="max-height: 350px; overflow-y: auto; margin: 15px 0; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; border: 1px solid #444;">
                         <div style="text-align: center; color: #aaa; padding: 20px;">Lade aktive Stellvertretungen...</div>
                     </div>
 
@@ -13823,11 +13830,11 @@ window.cancelAddMode = function() {
         ladeAktiveVertretungenDaten(todayStr);
     }
 
-    async function ladeAktiveVertretungenDaten(datum) {
+    async function ladeAktiveVertretungenDaten(todayStr) {
         const container = document.getElementById('stv-liste-container');
         
         try {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=slot,klasse,halle,verfasser&datum=eq.${datum}&verfasser=like.*(für:*`, {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=slot,datum,klasse,halle,verfasser&datum=gte.${todayStr}&verfasser=like.*(für:*`, {
                 headers: {
                     "apikey": SUPABASE_ANON_KEY,
                     "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
@@ -13837,29 +13844,54 @@ window.cancelAddMode = function() {
             const daten = await response.json();
 
             if (!Array.isArray(daten) || daten.length === 0) {
-                container.innerHTML = `<div style="text-align: center; color: #aaa; padding: 20px;">Keine aktiven Stellvertretungen für heute eingetragen.</div>`;
+                container.innerHTML = `<div style="text-align: center; color: #aaa; padding: 20px;">Keine aktiven Stellvertretungen eingetragen.</div>`;
                 return;
             }
 
             let gruppen = {};
             daten.forEach(item => {
-                if (!gruppen[item.verfasser]) {
-                    gruppen[item.verfasser] = [];
+                const key = `${item.datum}_${item.verfasser}`;
+                if (!gruppen[key]) {
+                    gruppen[key] = {
+                        datum: item.datum,
+                        verfasser: item.verfasser,
+                        eintraege: []
+                    };
                 }
-                gruppen[item.verfasser].push(item);
+                gruppen[key].eintraege.push(item);
             });
 
             let html = '';
-            for (const [verfasserStr, eintraege] of Object.entries(gruppen)) {
-                const slotsText = eintraege.map(e => `Slot ${e.slot} (${e.klasse} in ${e.halle})`).join(', ');
+            for (const group of Object.values(gruppen)) {
+                const anzahlLektionen = group.eintraege.length;
+                const lektionenWort = anzahlLektionen === 1 ? '1 Lektion' : `${anzahlLektionen} Lektionen`;
                 
+                const [jahr, monat, tag] = group.datum.split('-');
+                const formatiertesDatum = `${tag}.${monat}.${jahr}`;
+
+                // Roh-Verfasser parsen, um STV-Anzeige und Erfasser zu trennen
+                let rawVerfasser = group.verfasser;
+                let stvAnzeige = rawVerfasser;
+                let erfasserName = "";
+
+                if (rawVerfasser.includes('___erfasst:')) {
+                    const parts = rawVerfasser.split('___erfasst:');
+                    stvAnzeige = parts[0];
+                    erfasserName = parts[1];
+                }
+
                 html += `
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
                         <div>
-                            <strong style="color: #51ae32; font-size: 1.1em;">${verfasserStr}</strong>
-                            <div style="font-size: 0.85em; color: #ccc; margin-top: 4px;">Betroffene Lektionen: ${slotsText}</div>
+                            <div style="display: flex; align-items: baseline; gap: 10px;">
+                                <strong style="color: #51ae32; font-size: 1.1em;">${stvAnzeige}</strong>
+                                <span style="font-size: 0.85em; color: #888;">(${formatiertesDatum})</span>
+                            </div>
+                            <div style="font-size: 0.9em; color: #ddd; margin-top: 4px;">
+                                ${lektionenWort} &bull; <span style="color: #aaa; font-style: italic;">Erfasst von: ${erfasserName || 'unbekannt'}</span>
+                            </div>
                         </div>
-                        <button onclick="loescheVertretungsPaket('${verfasserStr}', '${datum}')" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85em;">Löschen</button>
+                        <span class="material-symbols-outlined" onclick="loescheVertretungsPaket('${group.verfasser}', '${group.datum}')" style="cursor: pointer; color: #e74c3c; font-size: 1.4em; transition: opacity 0.2s;" title="Stellvertretung löschen">delete</span>
                     </div>
                 `;
             }
@@ -13873,7 +13905,7 @@ window.cancelAddMode = function() {
     }
 
     async function loescheVertretungsPaket(verfasserString, datum) {
-        if (!confirm(`Möchtest du die Vertretung "${verfasserString}" wirklich aufheben? Die betroffenen Slots werden gelöscht/zurückgesetzt.`)) return;
+        if (!confirm(`Möchtest du diese Stellvertretung für den ${datum} wirklich aufheben? Die betroffenen Slots werden zurückgesetzt.`)) return;
 
         try {
             const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?datum=eq.${datum}&verfasser=eq.${verfasserString}`, {
@@ -13887,7 +13919,8 @@ window.cancelAddMode = function() {
             if (response.ok) {
                 alert("Vertretung erfolgreich aufgehoben.");
                 updateDisplay();
-                ladeAktiveVertretungenDaten(datum);
+                const todayStr = new Date().toISOString().split('T')[0];
+                ladeAktiveVertretungenDaten(todayStr);
             } else {
                 alert("Fehler beim Löschen in der Datenbank.");
             }
@@ -13896,7 +13929,6 @@ window.cancelAddMode = function() {
             alert("Netzwerkfehler beim Löschen.");
         }
     }
-
 
     
     
