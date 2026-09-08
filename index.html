@@ -13782,13 +13782,35 @@ window.cancelAddMode = function() {
             let lpSet = new Set();
             if (Array.isArray(data)) {
                 data.forEach(item => {
-                    if (item.kuerzel) {
-                        lpSet.add(item.kuerzel.trim().toLowerCase());
+                    // Falls die Spalte in Supabase eventuell anders heisst (z.B. grosses K oder 'kuerzel'), fangen wir das ab
+                    const kuerzelVal = item.kuerzel || item.Kuerzel;
+                    if (kuerzelVal) {
+                        lpSet.add(kuerzelVal.trim().toLowerCase());
                     }
                 });
             }
 
             let lpListe = Array.from(lpSet).sort();
+
+            // Fallback: Falls lp_db leer ist oder fehlschlägt, alternativ einmalig aus buchungen_db lesen
+            if (lpListe.length === 0) {
+                const fallbackResponse = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=verfasser`, {
+                    headers: {
+                        "apikey": SUPABASE_ANON_KEY,
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                const fallbackData = await fallbackResponse.json();
+                if (Array.isArray(fallbackData)) {
+                    fallbackData.forEach(item => {
+                        if (item.verfasser) {
+                            let k = item.verfasser.split(' (für:')[0].split('___erfasst:')[0].trim().toLowerCase();
+                            if (k) lpSet.add(k);
+                        }
+                    });
+                    lpListe = Array.from(lpSet).sort();
+                }
+            }
 
             let optionsHtml = '<option value="">Bitte wählen...</option>';
             lpListe.forEach(lp => {
@@ -13811,6 +13833,7 @@ window.cancelAddMode = function() {
         }
     }
 
+    
     function aktualisiereErfassungsDatumAnzeige() {
         const textSpan = document.getElementById('stv-erfassungs-date-text');
         if (stvEintragDatum) {
