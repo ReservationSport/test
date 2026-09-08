@@ -13770,8 +13770,8 @@ window.cancelAddMode = function() {
         const uebernehmendSelect = document.getElementById('stv-uebernehmend-select');
 
         try {
-            // Hole distinct Verfasser / Lehrpersonen aus der Datenbank oder nutze eine globale Liste, analog zu bestehenden Funktionen
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=verfasser`, {
+            // Holt alle Lehrpersonen-Kürzel direkt aus der lp_db
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/lp_db?select=kuerzel`, {
                 headers: {
                     "apikey": SUPABASE_ANON_KEY,
                     "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
@@ -13779,27 +13779,27 @@ window.cancelAddMode = function() {
             });
             const data = await response.json();
             
-            // Kürzel extrahieren und bereinigen
             let lpSet = new Set();
-            data.forEach(item => {
-                if (item.verfasser) {
-                    let kuerzel = item.verfasser.split(' (für:')[0].split('___erfasst:')[0].trim().toLowerCase();
-                    if (kuerzel) lpSet.add(kuerzel);
-                }
-            });
+            if (Array.isArray(data)) {
+                data.forEach(item => {
+                    if (item.kuerzel) {
+                        lpSet.add(item.kuerzel.trim().toLowerCase());
+                    }
+                });
+            }
 
             let lpListe = Array.from(lpSet).sort();
 
             let optionsHtml = '<option value="">Bitte wählen...</option>';
             lpListe.forEach(lp => {
-                optionsHtml += `<option value="${lp}">${lp.toUpperCase()}</option>`;
+                optionsHtml += `<option value="${lp}">${lp}</option>`;
             });
 
             ausfallSelect.innerHTML = optionsHtml;
             
             let uebernehmendHtml = '<option value="">Bitte wählen...</option>';
             lpListe.forEach(lp => {
-                uebernehmendHtml += `<option value="${lp}">${lp.toUpperCase()}</option>`;
+                uebernehmendHtml += `<option value="${lp}">${lp}</option>`;
             });
             uebernehmendHtml += '<option value="__extern__">-- Externe Vertretung --</option>';
             uebernehmendSelect.innerHTML = uebernehmendHtml;
@@ -13912,18 +13912,30 @@ window.cancelAddMode = function() {
         }
 
         try {
-            // Lädt alle Lektionen des Tages für die ausfallende LP (analog zu 'Stellvertretung suchen')
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=slot,klasse,halle,verfasser&datum=eq.${stvEintragDatum}&verfasser=eq.${ausfall}`, {
+            // Lädt absolut alle Lektionen des Tages
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=slot,klasse,halle,verfasser&datum=eq.${stvEintragDatum}`, {
                 headers: {
                     "apikey": SUPABASE_ANON_KEY,
                     "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
                 }
             });
             
-            gefundeneTagesLektionenAusfall = await response.json();
+            const alleTagesLektionen = await response.json();
 
-            if (!Array.isArray(gefundeneTagesLektionenAusfall) || gefundeneTagesLektionenAusfall.length === 0) {
-                alert(`Keine Lektionen für "${ausfall.toUpperCase()}" am ${stvEintragDatum} gefunden.`);
+            if (!Array.isArray(alleTagesLektionen)) {
+                alert("Fehler beim Abrufen der Lektionen aus der Datenbank.");
+                return;
+            }
+
+            // Filtert im Frontend nach der ausfallenden Lehrperson (berücksichtigt auch bereits gesetzte Vertretungen)
+            gefundeneTagesLektionenAusfall = alleTagesLektionen.filter(l => {
+                if (!l.verfasser) return false;
+                let v = l.verfasser.toLowerCase();
+                return v === ausfall || v.includes(`(für: ${ausfall})`);
+            });
+
+            if (gefundeneTagesLektionenAusfall.length === 0) {
+                alert(`Keine Lektionen für "${ausfall}" am ${stvEintragDatum} gefunden.`);
                 return;
             }
 
@@ -13931,13 +13943,12 @@ window.cancelAddMode = function() {
             document.getElementById('stv-erfassungs-step-2').style.display = 'block';
             
             const [j, m, t] = stvEintragDatum.split('-');
-            document.getElementById('stv-erfassungs-step2-info').innerText = `Wähle die Lektionen am ${t}.${m}.${j}, die ${uebernehmend.toUpperCase()} für ${ausfall.toUpperCase()} übernimmt:`;
+            document.getElementById('stv-erfassungs-step2-info').innerText = `Wähle die Lektionen am ${t}.${m}.${j}, die ${uebernehmend} für ${ausfall} übernimmt:`;
 
             const container = document.getElementById('stv-erfassungs-lektionen-container');
             container.innerHTML = '';
 
             gefundeneTagesLektionenAusfall.forEach((l, index) => {
-                // Es braucht nur Uhrzeit (Slot) und Klasse zur Auswahl
                 container.innerHTML += `
                     <label style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer;">
                         <input type="checkbox" value="${index}" checked class="stv-erfassungs-checkbox" style="margin-right: 12px; transform: scale(1.2);">
@@ -13969,7 +13980,6 @@ window.cancelAddMode = function() {
             uebernehmend = document.getElementById('stv-extern-input').value.trim().toLowerCase();
         }
 
-        // Der eingeloggte LP ist der Verfassende (Beispiel-Fallback auf currentUser oder globales Kürzel falls vorhanden)
         let eingeloggterLp = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : (window.currentLp || 'admin');
         
         const verfasserString = `${uebernehmend} (für: ${ausfall})___erfasst:${eingeloggterLp}`;
