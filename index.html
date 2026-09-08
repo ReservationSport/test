@@ -13657,7 +13657,14 @@ window.cancelAddMode = function() {
     let erfassungsAllDay = false;
 
     function oeffneVertretungsDialog() {
-        oeffneNeuenStvEintragDialog();
+        // Beim Klick im Menü wird nun direkt wieder die Übersicht geöffnet
+        if (typeof oeffneVertretungsUebersicht === 'function') {
+            oeffneVertretungsUebersicht();
+        } else if (typeof renderStellvertretung === 'function') {
+            renderStellvertretung();
+        } else {
+            oeffneNeuenStvEintragDialog();
+        }
     }
 
     function oeffneNeuenStvEintragDialog() {
@@ -13711,7 +13718,7 @@ window.cancelAddMode = function() {
 
                         <div class="modal-actions" style="margin-top: 15px;">
                             <button type="button" class="btn-action btn-primary" onclick="ladeTagesLektionenFuerErfassung()">Weiter</button>
-                            <button type="button" class="btn-action btn-secondary" onclick="document.getElementById('vertretungs-erfassungs-modal').remove(); oeffneVertretungsUebersicht();">Abbrechen</button>
+                            <button type="button" class="btn-action btn-secondary" onclick="document.getElementById('vertretungs-erfassungs-modal').remove(); if(typeof oeffneVertretungsUebersicht==='function') oeffneVertretungsUebersicht();">Abbrechen</button>
                         </div>
                     </div>
 
@@ -14183,7 +14190,6 @@ window.cancelAddMode = function() {
         let ausgewaehlteSlots = [];
         selectedLektionen.forEach(l => {
             l.eintraege.forEach(e => {
-                // Prüfen, ob dieser konkrete Eintrag zur ausfallenden LP gehört
                 let slotLehrer = e.lehrer ? e.lehrer.toLowerCase().trim() : "";
                 if (slotLehrer === ausfall) {
                     ausgewaehlteSlots.push(e.slotId);
@@ -14221,7 +14227,7 @@ window.cancelAddMode = function() {
                     });
                     if (!updateRes.ok) throw new Error("Fehler beim Aktualisieren (PATCH)");
                 } else {
-                    // Falls noch kein Datensatz in buchungen_db existiert, holen wir die Klasse/Halle aus dem Master, damit sie erhalten bleibt
+                    // Falls noch kein Datensatz in buchungen_db existiert, holen wir die Klasse/Halle aus dem Master
                     const masterRes = await fetch(`${SUPABASE_URL}/rest/v1/master_db?select=klasse,halle,wochentag&slot=eq.${slotId}`, {
                         headers: {
                             "apikey": SUPABASE_ANON_KEY,
@@ -14237,7 +14243,6 @@ window.cancelAddMode = function() {
                     };
 
                     if (Array.isArray(masterData) && masterData.length > 0) {
-                        // Wochentag des Datums ermitteln, um den passenden Master-Eintrag zu treffen
                         const dateObj = new Date(stvEintragDatum.replace(/-/g, "/"));
                         const wtArr = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
                         const aktuellerWochentag = wtArr[dateObj.getDay()];
