@@ -13919,7 +13919,7 @@ window.cancelAddMode = function() {
         closeStvErfassungsCalendar();
     }
 
-    async function ladeTagesLektionenFuerErfassung() {
+   async function ladeTagesLektionenFuerErfassung() {
         const ausfall = document.getElementById('stv-ausfall-select').value;
         const uebernehmendDropdown = document.getElementById('stv-uebernehmend-select').value;
         const externInput = document.getElementById('stv-extern-input').value.trim().toLowerCase();
@@ -13935,7 +13935,7 @@ window.cancelAddMode = function() {
         }
 
         try {
-            // Lädt absolut alle Lektionen des Tages
+            // Lädt alle Lektionen des Tages
             const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?select=slot,klasse,halle,verfasser&datum=eq.${stvEintragDatum}`, {
                 headers: {
                     "apikey": SUPABASE_ANON_KEY,
@@ -13950,11 +13950,12 @@ window.cancelAddMode = function() {
                 return;
             }
 
-            // Filtert im Frontend nach der ausfallenden Lehrperson (berücksichtigt auch bereits gesetzte Vertretungen)
+            // Robustere Filterung: Prüft, ob das Kürzel im verfasser-String enthalten ist (egal ob exakt, groß/klein oder als Vertretung)
             gefundeneTagesLektionenAusfall = alleTagesLektionen.filter(l => {
                 if (!l.verfasser) return false;
                 let v = l.verfasser.toLowerCase();
-                return v === ausfall || v.includes(`(für: ${ausfall})`);
+                // Prüft exakten Match oder ob es im String (z.B. bei bestehenden Zusätzen) vorkommt
+                return v === ausfall || v.includes(ausfall);
             });
 
             if (gefundeneTagesLektionenAusfall.length === 0) {
@@ -13975,7 +13976,7 @@ window.cancelAddMode = function() {
                 container.innerHTML += `
                     <label style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer;">
                         <input type="checkbox" value="${index}" checked class="stv-erfassungs-checkbox" style="margin-right: 12px; transform: scale(1.2);">
-                        <span style="font-size: 0.95em;">Slot / Uhrzeit: <strong>${l.slot}</strong> &bull; Klasse: <strong>${l.klasse}</strong></span>
+                        <span style="font-size: 0.95em;">Slot / Uhrzeit: <strong>${l.slot}</strong> &bull; Klasse: <strong>${l.klasse}</strong> &bull; LP: <strong>${l.verfasser}</strong></span>
                     </label>
                 `;
             });
