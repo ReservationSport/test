@@ -13804,11 +13804,14 @@ async function renderStvEintraege() {
 
         const grouped = {};
         stvEintraege.forEach(item => {
+            // Gruppierung über Datum und Verfasser (Stellvertretung)
             const key = `${item.datum}_${item.verfasser}`;
             if (!grouped[key]) {
                 grouped[key] = {
                     datum: item.datum,
                     verfasser: item.verfasser,
+                    // Hier wird der echte Erfasser der Meldung aus der DB genommen (z.B. item.erfasser, item.created_by oder Fallback)
+                    erfasserMeldung: item.erfasser || item.created_by || item.eingetragen_von || 'Unbekannt',
                     slots: [],
                     zeiten: [],
                     klassen: [],
@@ -13817,8 +13820,7 @@ async function renderStvEintraege() {
             }
             grouped[key].slots.push(item.slot);
             
-            // Unterrichtszeit auslesen (Feld heisst je nach DB 'zeit' oder 'time' – wir fangen beides ab)
-            const unterrichtsZeit = item.zeit || item.time || `Slot ${item.slot}`;
+            const unterrichtsZeit = item.zeit || item.time || `Lektion / Slot ${item.slot}`;
             grouped[key].zeiten.push(unterrichtsZeit);
 
             grouped[key].klassen.push(item.klasse || 'Keine Angabe');
@@ -13838,16 +13840,11 @@ async function renderStvEintraege() {
             const packId = `stv-pack-details-${idx}`;
             const idsJson = JSON.stringify(group.ids).replace(/'/g, "&apos;");
 
-            // Nur den reinen Verfasser extrahieren (vor dem "(für ...)") falls gewünscht, 
-            // oder den gesamten verfasser-String anzeigen, je nachdem was gespeichert ist.
-            // Hier nehmen wir an, group.verfasser enthält den String.
-            const eintragenVonText = group.verfasser; 
-
-            // Detailzeilen untereinander aufbauen: Unterrichtszeiten statt Slots!
+            // Detailzeilen untereinander aufbauen
             let detailsListHtml = '';
             for (let i = 0; i < group.slots.length; i++) {
                 detailsListHtml += `
-                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
                         <span style="color: #e67e22; font-weight: 500;">${group.zeiten[i]}</span>
                         <span style="color: #fff;">${group.klassen[i]}</span>
                     </div>
@@ -13862,7 +13859,7 @@ async function renderStvEintraege() {
                                 ${datumFormatted} &mdash; ${group.verfasser} &mdash; <span style="color: #e67e22;">${anzahlLektionen} Lektion${anzahlLektionen > 1 ? 'en' : ''}</span>
                             </div>
                             <div style="font-size: 12px; color: #aaa;">
-                                Stellvertretung eingetragen von: <span style="color: #e67e22; font-weight: 500;">${eintragenVonText}</span>
+                                Eingetragen von: <span style="color: #e67e22; font-weight: 500;">${group.erfasserMeldung}</span>
                             </div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 10px;" onclick="event.stopPropagation();">
