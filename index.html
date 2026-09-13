@@ -13651,34 +13651,31 @@ window.cancelAddMode = function() {
 
 
 /* ==================================================================== */
-/* 11.11 Stellvertretungs-Übersicht (Gesteuert über das Menü)           */
+/* 11.11 Stellvertretungs-Übersicht (Gesteuert über das Menü, blockweise)*/
 /* ==================================================================== */
 
 /**
- * Öffnet beim Klick im Menü direkt die Stellvertretungs-Übersicht 
- * und lädt alle Einträge aus Supabase.
+ * Öffnet beim Klick im Menü das Grundgerüst der Stellvertretungs-Übersicht.
  */
 async function oeffneVertretungsDialog() {
-    // Falls ein altes Modal noch da ist, erst entfernen
     const existingModal = document.getElementById('vertretungs-uebersicht-modal');
     if (existingModal) existingModal.remove();
 
-    // Modal HTML für die Übersicht zusammenbauen
     const modalHtml = `
         <div id="vertretungs-uebersicht-modal" class="modal-overlay" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20000; justify-content: center; align-items: center;">
-            <div class="modal-content" style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 650px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
+            <div class="modal-content" style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 680px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
                 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <div>
                         <h2 style="color: #fff; margin: 0 0 5px 0; font-size: 20px;">Vertretungs-Übersicht</h2>
-                        <p style="font-size: 0.85em; color: #aaa; margin: 0;">Aktuelle Stellvertretungen im System.</p>
+                        <p style="font-size: 0.85em; color: #aaa; margin: 0;">Aktuelle und zukünftige Stellvertretungen (blockweise gebündelt).</p>
                     </div>
                     <button type="button" onclick="oeffneNeuenStvErfassungsDialog()" style="padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 5px; background: #e67e22; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
                         <span class="material-symbols-outlined" style="font-size: 18px;">add</span> Neu eintragen
                     </button>
                 </div>
 
-                <div id="stv-uebersicht-liste" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; padding-right: 4px;">
+                <div id="stv-uebersicht-liste" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding-right: 4px;">
                     <div style="color: #aaa; text-align: center; padding: 20px;">Lade Vertretungen...</div>
                 </div>
 
@@ -13692,8 +13689,19 @@ async function oeffneVertretungsDialog() {
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    // Daten aus Supabase laden und in der Übersicht anzeigen
+    // Liste direkt befüllen lassen
+    await renderStvEintraege();
+}
+
+/**
+ * Lädt die Daten aus Supabase, filtert heute & Zukunft, bündelt sie und rendert die Liste.
+ */
+async function renderStvEintraege() {
     const listeContainer = document.getElementById('stv-uebersicht-liste');
+    if (!listeContainer) return;
+
+    listeContainer.innerHTML = '<div style="color: #aaa; text-align: center; padding: 20px;">Lade Vertretungen...</div>';
+
     try {
         const { data: buchungenData, error } = await window.supabaseClient
             .from('buchungen_db')
@@ -13703,35 +13711,71 @@ async function oeffneVertretungsDialog() {
 
         if (error) throw error;
 
-        // Filtere Einträge, die eine Stellvertretung sind (enthalten "(für ")
-        const stvEintraege = buchungenData ? buchungenData.filter(row => row.verfasser && row.verfasser.includes('(für ')) : [];
+        const heuteStr = new Date().toISOString().split('T')[0];
+
+        const stvEintraege = buchungenData ? buchungenData.filter(row => {
+            return row.verfasser && row.verfasser.includes('(für ') && row.datum >= heuteStr;
+        }) : [];
 
         if (stvEintraege.length === 0) {
-            listeContainer.innerHTML = '<div style="color: #888; text-align: center; padding: 30px; background: #252525; border-radius: 6px;">Keine aktiven Stellvertretungen gefunden.</div>';
+            listeContainer.innerHTML = '<div style="color: #888; text-align: center; padding: 30px; background: #252525; border-radius: 6px;">Keine aktiven (heutigen oder zukünftigen) Stellvertretungen gefunden.</div>';
             return;
         }
 
-        let html = '';
+        const grouped = {};
         stvEintraege.forEach(item => {
-            let datumFormatted = item.datum;
-            if (item.datum && item.datum.includes('-')) {
-                const [jahr, monat, tag] = item.datum.split('-');
-                datumFormatted = `${tag}.${monat}.${jahr}`;
+            const key = `${item.datum}_${item.verfasser}`;
+            if (!grouped[key]) {
+                grouped[key] = {
+                    datum: item.datum,
+                    verfasser: item.verfasser,
+                    slots: [],
+                    klassen: new Set(),
+                    ids: []
+                };
             }
+            grouped[key].slots.push(item.slot);
+            if (item.klasse) grouped[key].klassen.add(item.klasse);
+            grouped[key].ids.push(item.id);
+        });
+
+        const wochentage = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+
+        let html = '';
+        Object.keys(grouped).forEach((key, idx) => {
+            const group = grouped[key];
+            const [jahr, monat, tag] = group.datum.split('-');
+            const dateObj = new Date(group.datum);
+            const wochentagName = isNaN(dateObj.getDay()) ? 'Datum' : wochentage[dateObj.getDay()];
+            const datumFormatted = `${wochentagName}, ${tag}.${monat}.${jahr}`;
+            const anzahlLektionen = group.slots.length;
+            const slotListeText = group.slots.sort((a, b) => a - b).join(', Slot ');
+            const klassenText = Array.from(group.klassen).join(', ');
+            const packId = `stv-pack-details-${idx}`;
+            const idsJson = JSON.stringify(group.ids).replace(/'/g, "&apos;");
 
             html += `
-                <div style="background: #2a2a2a; border: 1px solid #444; border-left: 4px solid #e67e22; padding: 12px 15px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-weight: 600; font-size: 14px; color: #fff; margin-bottom: 3px;">
-                            ${datumFormatted} — Slot ${item.slot} (Klasse: ${item.klasse || 'k.A.'})
+                <div style="background: #2a2a2a; border: 1px solid #444; border-left: 4px solid #e67e22; border-radius: 6px; overflow: hidden;">
+                    <div style="padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleStvPaketDetails('${packId}')">
+                        <div style="display: flex; flex-direction: column; gap: 3px;">
+                            <div style="font-weight: 600; font-size: 14px; color: #fff;">
+                                ${datumFormatted} &mdash; ${group.verfasser} &mdash; <span style="color: #e67e22;">${anzahlLektionen} Lektion${anzahlLektionen > 1 ? 'en' : ''}</span>
+                            </div>
+                            <div style="font-size: 12px; color: #aaa;">
+                                Klick für Details (Slots: ${slotListeText} | Klassen: ${klassenText || 'k.A.'})
+                            </div>
                         </div>
-                        <div style="font-size: 13px; color: #e67e22;">
-                            ${item.verfasser}
+                        <div style="display: flex; align-items: center; gap: 10px;" onclick="event.stopPropagation();">
+                            <button type="button" onclick='loescheStvPaket(${idsJson})' style="background: none; border: none; color: #e74c3c; cursor: pointer; display: flex; align-items: center; padding: 4px;" title="Ganzes Vertretungspaket löschen">
+                                <span class="material-symbols-outlined" style="font-size: 20px;">delete</span>
+                            </button>
                         </div>
                     </div>
-                    <button type="button" onclick="loescheVertretungEintrag('${item.id}')" style="background: none; border: none; color: #e74c3c; cursor: pointer; display: flex; align-items: center;" title="Vertretung aufheben">
-                        <span class="material-symbols-outlined" style="font-size: 20px;">delete</span>
-                    </button>
+                    <div id="${packId}" style="display: none; padding: 10px 15px; background: #202020; border-top: 1px solid #333; font-size: 13px; color: #ccc;">
+                        <div><strong>Betroffene Slots:</strong> ${slotListeText}</div>
+                        <div><strong>Klassen:</strong> ${klassenText || 'Keine Angabe'}</div>
+                        <div><strong>Paket-Einträge:</strong> ${group.ids.length} Datensatz/sätze in Datenbank</div>
+                    </div>
                 </div>
             `;
         });
@@ -13741,6 +13785,47 @@ async function oeffneVertretungsDialog() {
     } catch (err) {
         console.error("Fehler beim Laden der Stellvertretungsübersicht:", err);
         listeContainer.innerHTML = '<div style="color: #e74c3c; text-align: center; padding: 20px;">Fehler beim Laden der Daten.</div>';
+    }
+}
+
+/**
+ * Klappt die Details eines gebündelten Stellvertretungspakets auf/zu.
+ */
+function toggleStvPaketDetails(detailId) {
+    const el = document.getElementById(detailId);
+    if (el) {
+        el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'block' : 'none';
+    }
+}
+
+/**
+ * Löscht ein gesamtes gebündeltes Stellvertretungspaket und aktualisiert die Ansicht dynamisch.
+ */
+async function loescheStvPaket(idsArray) {
+    if (!Array.isArray(idsArray) || idsArray.length === 0) return;
+    if (!confirm(`Möchtest du dieses Vertretungspaket (${idsArray.length} Lektion(en)) wirklich aufheben/löschen?`)) return;
+
+    try {
+        for (const id of idsArray) {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?id=eq.${id}`, {
+                method: 'DELETE',
+                headers: {
+                    "apikey": SUPABASE_ANON_KEY,
+                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`Fehler beim Löschen von ID ${id}`);
+            }
+        }
+
+        // Hauptanzeige & Übersicht direkt neu rendern
+        if (typeof updateDisplay === 'function') updateDisplay();
+        await renderStvEintraege();
+
+    } catch (err) {
+        console.error("Fehler beim Löschen des Stellvertretungspakets:", err);
+        alert("Fehler beim Löschen: " + (err.message || err));
     }
 }
 
