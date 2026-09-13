@@ -6517,21 +6517,19 @@ window.setBoxClick = function(box, klasse, slot, canEdit) {
             e.stopPropagation();
             return;
         }
-        if (!canEdit) {
+        const isStv = box.classList.contains('is-stv') || (e.currentTarget && e.currentTarget.classList.contains('is-stv'));
+        if (!canEdit && !isStv) {
             e.stopPropagation(); 
             return;
         }
         if (typeof openEditor === "function") {
-            openEditor(box, null, slot, klasse);
+            openEditor(e.currentTarget || box, null, slot, klasse);
         }
     };
 
-    box.replaceWith(box.cloneNode(true)); 
-    // Nach dem Klonen müssen wir das Element frisch greifen, falls nötig, aber box.onclick funktioniert direkt auf dem geklonten Element:
-    // Da replaceWith das Element im DOM ersetzt, referenzieren wir es über eine Neuzuweisung am übergebenen Element nicht direkt, 
-    // aber standardmäßig wird box.onclick gesetzt:
-    // (Hinweis: Da replaceWith das Objekt aus dem DOM wirft, setzen wir den Handler am besten direkt vor dem Ersetzen oder nutzen Event Delegation. 
-    // Zur Sicherheit verknüpfen wir es sauber:)
+    const newBox = box.cloneNode(true);
+    newBox.addEventListener('click', handler);
+    box.replaceWith(newBox);
 };
 
 /* ============================================================
