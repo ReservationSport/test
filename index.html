@@ -13847,7 +13847,7 @@ async function renderStvEintraege() {
             const packId = `stv-pack-details-${idx}`;
             const idsJson = JSON.stringify(group.ids).replace(/'/g, "&apos;");
 
-            // Detailzeilen untereinander aufbauen (statt Slot-Nummern nun die Unterrichtszeiten z.B. "07:30 - 09:00")
+            // Detailzeilen untereinander aufbauen (Unterrichtszeiten & Klassen)
             let detailsListHtml = '';
             for (let i = 0; i < group.slots.length; i++) {
                 detailsListHtml += `
@@ -13861,9 +13861,12 @@ async function renderStvEintraege() {
             html += `
                 <div style="background: #2a2a2a; border: 1px solid #444; border-left: 4px solid #e67e22; border-radius: 6px; overflow: hidden;">
                     <div style="padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleStvPaketDetails('${packId}')">
-                        <div style="display: flex; flex-direction: column; gap: 3px;">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
                             <div style="font-weight: 600; font-size: 14px; color: #fff;">
                                 ${datumFormatted} &mdash; ${group.verfasser} &mdash; <span style="color: #e67e22;">${anzahlLektionen} Lektion${anzahlLektionen > 1 ? 'en' : ''}</span>
+                            </div>
+                            <div style="font-size: 12px; color: #aaa;">
+                                Stellvertretung eingetragen von: <span style="color: #e67e22; font-weight: 500;">${group.verfasser}</span>
                             </div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 10px;" onclick="event.stopPropagation();">
