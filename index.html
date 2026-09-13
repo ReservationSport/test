@@ -13806,12 +13806,18 @@ async function renderStvEintraege() {
         stvEintraege.forEach(item => {
             const key = `${item.datum}_${item.verfasser}`;
             if (!grouped[key]) {
-                // Den Verfasser der Meldung (eingeloggter User beim Erfassen) aus dem verfasser-String extrahieren (Teil vor "(für")
+                // Extrahiere den Erfasser aus den eckigen Klammern am Ende (z.B. "[habe]"), falls vorhanden,
+                // ansonsten Fallback auf die Extraktion vor "(für".
                 let erfasserExtrahiert = 'Unbekannt';
                 if (item.verfasser) {
-                    const parts = item.verfasser.split('(für');
-                    if (parts[0]) {
-                        erfasserExtrahiert = parts[0].trim();
+                    const matchUser = item.verfasser.match(/\[(.*?)\]/);
+                    if (matchUser && matchUser[1]) {
+                        erfasserExtrahiert = matchUser[1].trim();
+                    } else {
+                        const parts = item.verfasser.split('(für');
+                        if (parts[0]) {
+                            erfasserExtrahiert = parts[0].trim();
+                        }
                     }
                 }
 
@@ -13938,7 +13944,7 @@ async function loescheStvPaket(idsArray) {
 
 
 /* ==================================================================== */
-/* 11.11.1 Erfassungsdialog vorbereiten & Kalender-Logik                 */
+/* 11.11.1 Erfassungsdialog vorbereiten & Kalender-Logik                */
 /* ==================================================================== */
 
 let stvEintragDatum = new Date().toISOString().split('T')[0]; // Standard: Heute (YYYY-MM-DD)
@@ -14503,10 +14509,14 @@ async function speichereNeueStellvertretung() {
     }
 
     try {
+        // Eingeloggten Benutzer ermitteln (Passe den Variablennamen an, falls er bei dir anders heisst, z.B. currentUser)
+        const aktuellerUser = window.currentUser || window.user || (typeof currentUser !== 'undefined' ? currentUser : 'habe');
+
         for (const lek of selectedLektionen) {
             for (const eintrag of lek.eintraege) {
                 const slotId = eintrag.slotId;
-                const verfasserString = `${uebernehmend} (für ${ausfall})`;
+                // Der Erfasser wird nun am Ende in eckigen Klammern mitgespeichert (z.B. "bupa (für bilu) [habe]")
+                const verfasserString = `${uebernehmend} (für ${ausfall}) [${aktuellerUser}]`;
 
                 const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db`, {
                     method: 'POST',
