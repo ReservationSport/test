@@ -14120,7 +14120,7 @@ async function speichereNeueStellvertretung() {
         for (const lek of selectedLektionen) {
             for (const eintrag of lek.eintraege) {
                 const slotId = eintrag.slotId;
-                const verfasserString = `___erfasst:${uebernehmend} (für: ${ausfall})`;
+                const verfasserString = `${uebernehmend} (für ${ausfall})`;
 
                 const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db`, {
                     method: 'POST',
