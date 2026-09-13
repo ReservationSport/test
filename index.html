@@ -6505,24 +6505,39 @@ window.loadPlan = async function(isExplicitUserAction = false) {
     }
 };
     
-
 /* ============================================================
-   ZENTRALE KLICK-STEUERUNG
+   ZENTRALE KLICK-STEUERUNG (MIT KONSOLE-PRÜFUNG)
    ============================================================ */
 window.setBoxClick = function(box, klasse, slot, canEdit) {
     if (!box) return;
+    
+    // Prüfen, ob die Box beim Binden bereits als STV erkannt wurde
+    const initialStv = box.classList.contains('is-stv');
+    console.log(`[setBoxClick BIND] Slot: ${slot} | Klasse: ${klasse} | canEdit: ${canEdit} | is-stv: ${initialStv}`);
+
     const handler = function(e) {
+        console.log(`[setBoxClick CLICK] Geklickter Slot: ${slot}`);
         if (window.moveMode) {
+            console.log("-> Abbruch: moveMode aktiv");
             e.stopPropagation();
             return;
         }
-        const isStv = box.classList.contains('is-stv') || (e.currentTarget && e.currentTarget.classList.contains('is-stv'));
+        
+        const targetBox = e.currentTarget || box;
+        const isStv = targetBox.classList.contains('is-stv');
+        console.log(`-> Live-Check: canEdit=${canEdit}, isStv=${isStv}`);
+
         if (!canEdit && !isStv) {
+            console.log("-> Abbruch: Weder canEdit noch isStv true!");
             e.stopPropagation(); 
             return;
         }
+        
+        console.log("-> OK, starte openEditor");
         if (typeof openEditor === "function") {
-            openEditor(e.currentTarget || box, null, slot, klasse);
+            openEditor(targetBox, null, slot, klasse);
+        } else {
+            console.error("-> FEHLER: openEditor ist keine Funktion!");
         }
     };
 
