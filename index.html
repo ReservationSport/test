@@ -8267,6 +8267,10 @@ window.applyHalleSelection = async function(neueHalle, time, slot, klasse, btn, 
     }
     const safeUserKuerzel = String(rawUserKuerzel).trim();
 
+    // 🛡️ STV-PRÜFUNG: Bestehenden Verfasser beibehalten, falls (für ... vorhanden
+    const _oldVerf = currentSlotData.verfasser || "";
+    const finalVerfasser = _oldVerf.toLowerCase().includes('(für ') ? _oldVerf : safeUserKuerzel;
+
     // Visueller Callback (wird von prozessiereAktion aufgerufen)
     const onCompleteVisuals = (payloadData) => {
         if (btn) {
@@ -8282,7 +8286,7 @@ window.applyHalleSelection = async function(neueHalle, time, slot, klasse, btn, 
         if (window.lastPlanData && window.lastPlanData[currentSlotId]) {
             window.lastPlanData[currentSlotId].halle = zugewieseneHalle;
             window.lastPlanData[currentSlotId].typ = zugewiesenerTyp || "";
-            if (safeUserKuerzel) window.lastPlanData[currentSlotId].verfasser = safeUserKuerzel;
+            if (payloadData.verfasser) window.lastPlanData[currentSlotId].verfasser = payloadData.verfasser;
         }
 
         const box = document.querySelector(`[data-slot="${currentSlotId}"]`);
@@ -8332,7 +8336,7 @@ window.applyHalleSelection = async function(neueHalle, time, slot, klasse, btn, 
         details: currentSlotData.details || currentSlotData.materialDetail || "",
         timestamp: now,
         typ: typ || "",
-        verfasser: safeUserKuerzel
+        verfasser: finalVerfasser
     };
 
     // Übergabe an prozessiereAktion (Regelt Doppellektion, Konfliktprüfung & Queue)
@@ -8345,7 +8349,6 @@ window.applyHalleSelection = async function(neueHalle, time, slot, klasse, btn, 
         }
     }
 };
-
 
     
 /* ============================================================
