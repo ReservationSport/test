@@ -8641,6 +8641,10 @@ async function saveMaterialSelection(mat, detail, time, slot, klasse, btn, userK
     }
     const safeUserKuerzel = String(rawUserKuerzel).trim() || currentSlotData.verfasser || "";
 
+    // 🛡️ STV-PRÜFUNG: Bestehenden Verfasser beibehalten, falls (für ... vorhanden
+    const _oldVerf = currentSlotData.verfasser || "";
+    const finalVerfasser = _oldVerf.toLowerCase().includes('(für ') ? _oldVerf : safeUserKuerzel;
+
     // --- KORREKT: Aufruf mit slotNum, halle und dem neuen Materialwert (mat) ---
     try {
         if (typeof window.pruefeUndRueckgaengigMachen === 'function') {
@@ -8671,7 +8675,7 @@ async function saveMaterialSelection(mat, detail, time, slot, klasse, btn, userK
                 material: materialVal,
                 details: detailVal,
                 weitergabe: null,
-                verfasser: safeUserKuerzel
+                verfasser: payloadData.verfasser || finalVerfasser
             };
         }
 
@@ -8695,7 +8699,7 @@ async function saveMaterialSelection(mat, detail, time, slot, klasse, btn, userK
         weitergabe: null, 
         timestamp: now,
         typ: currentSlotData.typ || "buchung",
-        verfasser: safeUserKuerzel
+        verfasser: finalVerfasser
     };
 
     // Übergabe an prozessiereAktion (regelt Doppellektionen, Queue und Events)
@@ -8767,6 +8771,10 @@ async function applyMaterialDelete(time, slot, klasse, btn, userKuerzel) {
         rawUserKuerzel = el ? (el.value || "") : "";
     }
     const safeUserKuerzel = String(rawUserKuerzel).trim() || "lp";
+
+    // 🛡️ STV-PRÜFUNG: Bestehenden Verfasser beibehalten, falls (für ... vorhanden
+    const _oldVerf = currentSlotData.verfasser || "";
+    const finalVerfasser = _oldVerf.toLowerCase().includes('(für ') ? _oldVerf : safeUserKuerzel;
 
     // 1. Partner (Anbieter) korrekt ermitteln (Status-Worte wie "erledigt" ignorieren!)
     let anbieterOderUebernehmer = "";
@@ -8846,7 +8854,7 @@ async function applyMaterialDelete(time, slot, klasse, btn, userKuerzel) {
                 materialDetail: "",
                 details: "",
                 weitergabe: null,
-                verfasser: safeUserKuerzel
+                verfasser: payloadData.verfasser || finalVerfasser
             };
         }
         
@@ -8871,7 +8879,7 @@ async function applyMaterialDelete(time, slot, klasse, btn, userKuerzel) {
         weitergabe: null,
         timestamp: now,
         typ: currentSlotData.typ || "buchung",
-        verfasser: safeUserKuerzel
+        verfasser: finalVerfasser
     };
 
     if (typeof window.prozessiereAktion === 'function') {
