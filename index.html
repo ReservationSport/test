@@ -13711,11 +13711,26 @@ async function renderStvEintraege() {
 
         if (error) throw error;
 
-        const heuteStr = new Date().toISOString().split('T')[0];
+        console.log("Rohdaten aus buchungen_db:", buchungenData);
+
+        // Lokales heutiges Datum im Format YYYY-MM-DD ermitteln (verhindert UTC-Verschiebungen)
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const heuteStr = `${yyyy}-${mm}-${dd}`;
+        console.log("Heutiges Vergleichs-Datum:", heuteStr);
 
         const stvEintraege = buchungenData ? buchungenData.filter(row => {
-            return row.verfasser && row.verfasser.includes('(für ') && row.datum >= heuteStr;
+            const hasVerfasser = row.verfasser && row.verfasser.includes('(für ');
+            const isFutureOrToday = row.datum >= heuteStr;
+            
+            console.log(`Eintrag ID ${row.id}: Datum=${row.datum} (>= heute? ${isFutureOrToday}), Verfasser=${row.verfasser} (hat '(für '? ${hasVerfasser})`);
+            
+            return hasVerfasser && isFutureOrToday;
         }) : [];
+
+        console.log("Gefilterte Stellvertretungen für die Übersicht:", stvEintraege);
 
         if (stvEintraege.length === 0) {
             listeContainer.innerHTML = '<div style="color: #888; text-align: center; padding: 30px; background: #252525; border-radius: 6px;">Keine aktiven (heutigen oder zukünftigen) Stellvertretungen gefunden.</div>';
