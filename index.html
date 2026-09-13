@@ -5865,7 +5865,7 @@ if (planContainer) {
         }
     });
 
-    // 2. KLICK: Paste oder Editieren
+    // 2. KLICK: Paste oder Editieren (inkl. STV-Boxen)
     planContainer.addEventListener('click', function(e) {
         if (e.target.closest('.box-notiz-icon')) return;
 
@@ -5874,16 +5874,18 @@ if (planContainer) {
 
         const slot = box.getAttribute('data-slot');
         const isMine = box.classList.contains('is-mine');
+        const isStv = box.classList.contains('is-stv');
+        const canEdit = isMine || isStv;
 
         if (window.copiedSlotData) {
             // --- PASTE-MODUS ---
-            if (isMine && typeof performPaste === "function") {
+            if (canEdit && typeof performPaste === "function") {
                 e.stopPropagation();
                 performPaste(slot, window.copiedSlotData);
             }
         } else {
             // --- NORMALER MODUS ---
-            if (isMine) {
+            if (canEdit) {
                 if (typeof openEditor === "function") {
                     const klasse = box.querySelector('.klasse-label')?.innerText || "";
                     const zeitStr = box.getAttribute('data-time') || "";
