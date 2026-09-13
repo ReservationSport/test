@@ -374,6 +374,24 @@ body {
     z-index: 100;
 }
 
+
+/* STV-BOXEN: Gelbe Umrandung für Stellvertretungen */
+.box.is-stv { 
+    border: 3px solid #f1c40f !important; 
+    box-shadow: 0 0 6px rgba(241, 196, 15, 0.6);
+    z-index: 10; 
+}
+        
+.box.is-stv:hover {
+    background-color: rgba(241, 196, 15, 0.2) !important;
+    box-shadow: inset 0 0 15px rgba(241, 196, 15, 0.4), 0 0 20px rgba(241, 196, 15, 0.3);
+    transition: transform 0.2s ease;
+    transform: scale(1.03);
+    z-index: 100;
+}
+
+
+    
 /* FREMDE BOXEN: Pointer-Events sind jetzt 'auto', 
    damit sie als Container existieren, aber der Klick-Schutz kommt aus dem JS. */
 .box.not-mine {
@@ -6374,7 +6392,7 @@ window.loadPlan = async function(isExplicitUserAction = false) {
                         if (row.details) plan[slot].details = row.details.toString();
                         if (row.typ) plan[slot].typ = row.typ.toString();
                         if (row.verfasser) plan[slot].verfasser = row.verfasser.toString();
-                        if (row.weitergabe) plan[slot].weitergabe = row.weitergabe.toString(); // <--- HIER ERGÄNZT
+                        if (row.weitergabe) plan[slot].weitergabe = row.weitergabe.toString();
                     }
                 }
             });
@@ -6388,7 +6406,7 @@ window.loadPlan = async function(isExplicitUserAction = false) {
 
         let html = `<div class="box header-row" style="grid-column: span 6;"><span>${aktuellerWochentag}, ${d}.${m}.${y}</span></div>`;
 
-        zeiten.forEach((zeitStr, rowIndex) => {
+        zeiten.dates ? zeiten : zeiten.forEach((zeitStr, rowIndex) => {
             if (rowIndex + 1 === 4 || rowIndex + 1 === 10) html += `<div class="divider-thin" style="grid-column: span 6;"></div>`;
             if (rowIndex + 1 === 7) html += `<div class="divider-thick" style="grid-column: span 6;"></div>`;
             html += `<div class="box zeit-box">${zeitStr}</div>`;
@@ -6427,23 +6445,36 @@ window.loadPlan = async function(isExplicitUserAction = false) {
                 const safeUserKuerzel = String(rawUserKuerzel).trim().toLowerCase();
                 const istMeinVerfasser = (verfasser.trim().toLowerCase() === safeUserKuerzel);
                 const istMeinLehrer = (lehrerDaten.trim().toLowerCase() === safeUserKuerzel);
-                const isMyBooking = (safeUserKuerzel !== "" && (istMeinVerfasser || istMeinLehrer));
-                
+
+                // STV-Erkennung (z.B. "bupa (für bilu)")
+                const hasStvPattern = verfasser.includes('(für ');
+                let stvUebernehmend = "";
+                if (hasStvPattern) {
+                    const parts = verfasser.split(/\s*\(für\s+/i);
+                    stvUebernehmend = parts[0].trim().toLowerCase();
+                }
+                const isStvBox = hasStvPattern;
+                const istMeinStvVerfasser = (isStvBox && stvUebernehmend === safeUserKuerzel);
+
+                const isMyBooking = (safeUserKuerzel !== "" && (istMeinVerfasser || istMeinLehrer || istMeinStvVerfasser));
                 const canEdit = isMyClass || isMyBooking;
+                
                 const hallenObj = (window.hallenConfig && window.hallenConfig[halle]) ? window.hallenConfig[halle] : null;
                 const bgFarbe = (hallenObj && !isAusfall) ? (hallenObj.color || hallenObj.farbe || '') : '';
                 
-                const classList = ["box", isKlasseLeer ? "empty" : "", canEdit ? "is-mine" : "not-mine", isAusfall ? "ausfall-mode" : ""].filter(Boolean).join(" ");
+                // Klassenbestimmung: STV-Boxen kriegen .is-stv, eigene normale Boxen .is-mine, sonst .not-mine
+                const borderClass = isStvBox ? "is-stv" : (canEdit ? "is-mine" : "not-mine");
+                const classList = ["box", isKlasseLeer ? "empty" : "", borderClass, isAusfall ? "ausfall-mode" : ""].filter(Boolean).join(" ");
                 
                 html += `
                 <div class="${classList}" data-slot="${absoluteSlot}" data-time="${zeitStr}" 
-                     style="background-color: ${bgFarbe}; cursor: ${canEdit ? 'pointer' : 'default'}; position: relative;">
-                     <div class="klasse-label">${klasse}</div>
-                     <div class="lehrer-info">${lehrer}</div>
-                     <div class="halle-label">${halle}</div>
-                     <div class="lock-icon-container" style="position:absolute; right:-3px; bottom:5px; display:flex; align-items:center;">
+                       style="background-color: ${bgFarbe}; cursor: ${canEdit ? 'pointer' : 'default'}; position: relative;">
+                       <div class="klasse-label">${klasse}</div>
+                       <div class="lehrer-info">${lehrer}</div>
+                       <div class="halle-label">${halle}</div>
+                       <div class="lock-icon-container" style="position:absolute; right:-3px; bottom:5px; display:flex; align-items:center;">
                         ${typ === 'fix' ? '<span class="material-symbols-outlined" style="font-size:14px; color:#ff9800;">lock</span>' : ''}
-                     </div>
+                       </div>
                 </div>`;
             }
         });
@@ -6630,7 +6661,7 @@ window.syncPlan = async function() {
                         if (row.details) newPlan[slot].details = row.details.toString();
                         if (row.typ) newPlan[slot].typ = row.typ.toString();
                         if (row.verfasser) newPlan[slot].verfasser = row.verfasser.toString();
-                        if (row.weitergabe) newPlan[slot].weitergabe = row.weitergabe.toString(); // <--- HIER ERGÄNZT
+                        if (row.weitergabe) newPlan[slot].weitergabe = row.weitergabe.toString();
                     }
                 }
             });
@@ -6673,14 +6704,27 @@ window.syncPlan = async function() {
             const lehrer = (verfasser !== "") ? verfasser : (lehrerDaten !== "" ? lehrerDaten : (allClassTeachers[klasse] || ""));
             const istMeinVerfasser = (verfasser.trim().toLowerCase() === safeUserKuerzel);
             const istMeinLehrer = (lehrerDaten.trim().toLowerCase() === safeUserKuerzel);
-            const isMyBooking = (safeUserKuerzel !== "" && (istMeinVerfasser || istMeinLehrer));
+
+            // STV-Erkennung (z.B. "bupa (für bilu)")
+            const hasStvPattern = verfasser.includes('(für ');
+            let stvUebernehmend = "";
+            if (hasStvPattern) {
+                const parts = verfasser.split(/\s*\(für\s+/i);
+                stvUebernehmend = parts[0].trim().toLowerCase();
+            }
+            const isStvBox = hasStvPattern;
+            const istMeinStvVerfasser = (isStvBox && stvUebernehmend === safeUserKuerzel);
+
+            const isMyBooking = (safeUserKuerzel !== "" && (istMeinVerfasser || istMeinLehrer || istMeinStvVerfasser));
             const isMyClass = !isKlasseLeer && myClasses.some(c => String(c).trim().toLowerCase() === klasse.trim().toLowerCase());
             const canEdit = isMyClass || isMyBooking;
             
             const hallenObj = (window.hallenConfig && window.hallenConfig[halle]) ? window.hallenConfig[halle] : null;
             const bgFarbe = (hallenObj && !isAusfall) ? (hallenObj.color || hallenObj.farbe || '') : '';
 
-            box.className = ["box", isKlasseLeer ? "empty" : "", canEdit ? "is-mine" : "not-mine", isAusfall ? "ausfall-mode" : ""].filter(Boolean).join(" ");
+            // STV-Klassenanwendung analog zu loadPlan
+            const borderClass = isStvBox ? "is-stv" : (canEdit ? "is-mine" : "not-mine");
+            box.className = ["box", isKlasseLeer ? "empty" : "", borderClass, isAusfall ? "ausfall-mode" : ""].filter(Boolean).join(" ");
             box.style.backgroundColor = bgFarbe;
             box.style.cursor = canEdit ? 'pointer' : 'default';
 
