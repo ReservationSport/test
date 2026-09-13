@@ -13856,16 +13856,15 @@ async function renderStvEintraege() {
             }
             grouped[key].slots.push(item.slot);
             
-            // Unterrichtszeit aus Slot mathematisch berechnen oder Fallbacks nutzen
+            // Nur reine Uhrzeit (ohne "X. Lektion") ermitteln
             let unterrichtsZeit = item.zeit || item.time || item.uhrzeit;
             if (!unterrichtsZeit && item.slot) {
                 const slotNum = parseInt(item.slot);
                 if (!isNaN(slotNum)) {
                     const lektionIndex = Math.floor((slotNum - 1) / 5);
-                    const lektionNummer = lektionIndex + 1;
                     const zeitStr = zeitenArray[lektionIndex];
                     if (zeitStr) {
-                        unterrichtsZeit = `${lektionNummer}. Lektion (${zeitStr})`;
+                        unterrichtsZeit = zeitStr; // Nur die Zeit, z.B. "10:00 - 10:45"
                     }
                 }
             }
@@ -13893,7 +13892,7 @@ async function renderStvEintraege() {
             const packId = `stv-pack-details-${idx}`;
             const idsJson = JSON.stringify(group.ids).replace(/'/g, "&apos;");
 
-            // Eckige Klammern aus dem angezeigten Verfasser-String entfernen, damit sie in der Übersicht nicht erscheinen
+            // Eckige Klammern aus dem angezeigten Verfasser-String entfernen
             const verfasserAnzeige = group.verfasserRaw ? group.verfasserRaw.replace(/\[.*?\]/g, '').trim() : '';
 
             // Detailzeilen untereinander aufbauen
@@ -13925,7 +13924,7 @@ async function renderStvEintraege() {
                         </div>
                     </div>
                     <div id="${packId}" style="display: none; padding: 10px 15px; background: #202020; border-top: 1px solid #333; font-size: 13px; color: #ccc;">
-                        <div style="font-weight: 600; margin-bottom: 6px; color: #aaa; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Zeit &amp; Klassen im Detail:</div>
+                        <div style="font-weight: 600; margin-bottom: 6px; color: #aaa; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Details:</div>
                         ${detailsListHtml}
                     </div>
                 </div>
