@@ -13806,8 +13806,7 @@ async function renderStvEintraege() {
         stvEintraege.forEach(item => {
             const key = `${item.datum}_${item.verfasser}`;
             if (!grouped[key]) {
-                // Extrahiere den Erfasser aus den eckigen Klammern am Ende (z.B. "[habe]"), falls vorhanden,
-                // ansonsten Fallback auf die Extraktion vor "(für".
+                // Erfasser aus den eckigen Klammern extrahieren (z. B. "[bupa]" -> "bupa")
                 let erfasserExtrahiert = 'Unbekannt';
                 if (item.verfasser) {
                     const matchUser = item.verfasser.match(/\[(.*?)\]/);
@@ -13823,7 +13822,7 @@ async function renderStvEintraege() {
 
                 grouped[key] = {
                     datum: item.datum,
-                    verfasser: item.verfasser,
+                    verfasserRaw: item.verfasser,
                     erfasserMeldung: erfasserExtrahiert,
                     slots: [],
                     zeiten: [],
@@ -13857,6 +13856,9 @@ async function renderStvEintraege() {
             const packId = `stv-pack-details-${idx}`;
             const idsJson = JSON.stringify(group.ids).replace(/'/g, "&apos;");
 
+            // Eckige Klammern aus dem angezeigten Verfasser-String entfernen, damit sie in der Übersicht nicht erscheinen
+            const verfasserAnzeige = group.verfasserRaw ? group.verfasserRaw.replace(/\[.*?\]/g, '').trim() : '';
+
             // Detailzeilen untereinander aufbauen
             let detailsListHtml = '';
             for (let i = 0; i < group.slots.length; i++) {
@@ -13873,7 +13875,7 @@ async function renderStvEintraege() {
                     <div style="padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleStvPaketDetails('${packId}')">
                         <div style="display: flex; flex-direction: column; gap: 4px;">
                             <div style="font-weight: 600; font-size: 14px; color: #fff;">
-                                ${datumFormatted} &mdash; ${group.verfasser} &mdash; <span style="color: #e67e22;">${anzahlLektionen} Lektion${anzahlLektionen > 1 ? 'en' : ''}</span>
+                                ${datumFormatted} &mdash; ${verfasserAnzeige} &mdash; <span style="color: #e67e22;">${anzahlLektionen} Lektion${anzahlLektionen > 1 ? 'en' : ''}</span>
                             </div>
                             <div style="font-size: 12px; color: #aaa;">
                                 Eingetragen von: <span style="color: #e67e22; font-weight: 500;">${group.erfasserMeldung}</span>
