@@ -13746,13 +13746,162 @@ async function oeffneVertretungsDialog() {
 
 
 /* ==================================================================== */
-/* 11.11.1 Erfassungsdialog vorbereiten & Kalender-Logik                */
+/* 11.11.1 Erfassungsdialog vorbereiten & Kalender-Logik                 */
 /* ==================================================================== */
 
 let stvEintragDatum = new Date().toISOString().split('T')[0]; // Standard: Heute (YYYY-MM-DD)
 let stvErfassungsCalDate = new Date();
 let fetchedErfassungsLektionen = [];
 let erfassungsAllDay = false;
+
+/**
+ * Öffnet den Erfassungsdialog, um eine neue Stellvertretung anzulegen.
+ */
+async function oeffneNeuenStvErfassungsDialog() {
+    const existingModal = document.getElementById('vertretungs-erfassungs-modal');
+    if (existingModal) existingModal.remove();
+
+    const existingCal = document.getElementById('stv-erfassungs-calendar-modal');
+    if (existingCal) existingCal.remove();
+
+    const modalHtml = `
+        <div id="vertretungs-erfassungs-modal" class="modal-overlay" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20005; justify-content: center; align-items: center;">
+            <div class="modal-content" style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
+                
+                <h2 style="color: #fff; margin-top: 0; font-size: 20px; margin-bottom: 20px;">Stellvertretung erfassen</h2>
+                
+                <!-- SCHRITT 1: Auswahl der Personen und des Datums -->
+                <div id="stv-erfassungs-step-1">
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-size: 13px; color: #aaa; margin-bottom: 5px;">Ausfallende Lehrperson:</label>
+                        <select id="stv-ausfall-select" style="width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #444; border-radius: 6px; font-size: 14px;">
+                            <option value="">Bitte wählen...</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-size: 13px; color: #aaa; margin-bottom: 5px;">Übernehmende Lehrperson:</label>
+                        <select id="stv-uebernehmend-select" onchange="checkStvExternInput()" style="width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #444; border-radius: 6px; font-size: 14px;">
+                            <option value="">Bitte wählen...</option>
+                            <option value="__extern__">Extern / Andere...</option>
+                        </select>
+                    </div>
+
+                    <div id="stv-extern-container" style="margin-bottom: 15px; display: none;">
+                        <input type="text" id="stv-extern-input" placeholder="Name der externen Person..." style="width: 100%; padding: 10px; background: #222; color: #fff; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; font-size: 14px;">
+                    </div>
+
+                    <div style="margin-bottom: 25px;">
+                        <label style="display: block; font-size: 13px; color: #aaa; margin-bottom: 5px;">Datum:</label>
+                        <div onclick="openStvErfassungsCalendar()" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #222; border: 1px solid #444; border-radius: 6px; cursor: pointer;">
+                            <span id="stv-erfassungs-date-text" style="font-size: 14px;">Heute</span>
+                            <span class="material-symbols-outlined" style="font-size: 18px; color: #aaa;">calendar_month</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                        <button type="button" onclick="document.getElementById('vertretungs-erfassungs-modal').remove()" style="background: #444; color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;">Abbrechen</button>
+                        <button type="button" onclick="ladeTagesLektionenFuerErfassung()" style="background: #e67e22; color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">Weiter</button>
+                    </div>
+                </div>
+
+                <!-- SCHRITT 2: Lektionen auswählen -->
+                <div id="stv-erfassungs-step-2" style="display: none;">
+                    <p id="stv-erfassungs-step2-info" style="font-size: 13px; color: #aaa; margin-bottom: 15px;"></p>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <button type="button" id="btn-toggle-erfassungs-all" onclick="toggleAllErfassungsLessons()" style="background: transparent; color: #e67e22; border: 1px solid #e67e22; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%;">Alle Lektionen markieren</button>
+                    </div>
+
+                    <div id="stv-erfassungs-tagesplan-container" style="max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; padding-right: 4px;">
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between;">
+                        <button type="button" onclick="document.getElementById('stv-erfassungs-step-2').style.display='none'; document.getElementById('stv-erfassungs-step-1').style.display='block';" style="background: #444; color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;">Zurück</button>
+                        <button type="button" onclick="speichereNeueStellvertretung()" style="background: #27ae60; color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">Speichern</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Kalender-Popup für die Datumsauswahl -->
+        <div id="stv-erfassungs-calendar-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 20010; justify-content: center; align-items: center;">
+            <div style="background: #1e1e1e; padding: 20px; border-radius: 8px; width: 300px; border: 1px solid #444; color: #fff;">
+                <div id="stvcal-erfassungs-nav" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold;"></div>
+                <div id="stvcal-erfassungs-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 15px;"></div>
+                <div style="text-align: right;">
+                    <button type="button" onclick="closeStvErfassungsCalendar()" style="background: #444; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Schliessen</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    if (typeof aktualisiereErfassungsDatumAnzeige === 'function') {
+        aktualisiereErfassungsDatumAnzeige();
+    }
+
+    await fuelleStvLehrerDropdowns();
+}
+
+/**
+ * Hilfsfunktion zum Befüllen der beiden Lehrpersonen-Selects (Ausfall & Übernehmend).
+ */
+async function fuelleStvLehrerDropdowns() {
+    const ausfallSelect = document.getElementById('stv-ausfall-select');
+    const uebernehmendSelect = document.getElementById('stv-uebernehmend-select');
+    
+    if (!ausfallSelect || !uebernehmendSelect) return;
+
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('master_db')
+            .select('lehrer');
+
+        if (error) throw error;
+
+        let lehrerSet = new Set();
+        if (data) {
+            data.forEach(row => {
+                if (row.lehrer) {
+                    let kuerzel = row.lehrer.toString().trim().toLowerCase();
+                    if (kuerzel) lehrerSet.add(kuerzel);
+                }
+            });
+        }
+        let lehrerListe = Array.from(lehrerSet).sort();
+
+        let ausfallHtml = '<option value="">Bitte wählen...</option>';
+        lehrerListe.forEach(l => {
+            ausfallHtml += `<option value="${l}">${l}</option>`;
+        });
+        ausfallSelect.innerHTML = ausfallHtml;
+
+        let uebernehmendHtml = '<option value="">Bitte wählen...</option>';
+        uebernehmendHtml += '<option value="__extern__">Extern / Andere...</option>';
+        lehrerListe.forEach(l => {
+            uebernehmendHtml += `<option value="${l}">${l}</option>`;
+        });
+        uebernehmendSelect.innerHTML = uebernehmendHtml;
+
+    } catch (err) {
+        console.error("Fehler beim Laden der Lehrpersonen für das Stv-Formular:", err);
+    }
+}
+
+/**
+ * Hilfsfunktion, um das Eingabefeld für externe Lehrpersonen ein-/auszublenden.
+ */
+function checkStvExternInput() {
+    const val = document.getElementById('stv-uebernehmend-select').value;
+    const container = document.getElementById('stv-extern-container');
+    if (container) {
+        container.style.display = (val === '__extern__') ? 'block' : 'none';
+    }
+}
 
 /**
  * Aktualisiert die Datumsanzeige im Erfassungsdialog auf das deutsche Format (DD.MM.YYYY).
