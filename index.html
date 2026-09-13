@@ -14342,7 +14342,7 @@ async function speichereNeueStellvertretung() {
         if (erfassungModal) erfassungModal.remove();
 
         if (typeof updateDisplay === 'function') updateDisplay();
-        oeffneVertretungsUebersicht();
+        if (typeof oeffneVertretungsDialog === 'function') oeffneVertretungsDialog();
 
     } catch (err) {
         console.error("Fehler beim Speichern der Stellvertretung:", err);
