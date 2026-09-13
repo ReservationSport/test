@@ -14547,13 +14547,13 @@ async function speichereNeueStellvertretung() {
     }
 
     try {
-        // Eingeloggten Benutzer ermitteln (Fallback auf 'bupa' angepasst, da du eingeloggt bist)
-        const aktuellerUser = window.currentUser || window.user || window.username || (typeof currentUser !== 'undefined' ? currentUser : 'bupa');
+        // Eingeloggten Benutzer korrekt über userKuerzel oder localStorage ermitteln
+        const aktuellerUser = (typeof userKuerzel !== 'undefined' && userKuerzel) ? userKuerzel : localStorage.getItem('userKuerzel') || 'bupa';
 
         for (const lek of selectedLektionen) {
             for (const eintrag of lek.eintraege) {
                 const slotId = eintrag.slotId;
-                // Der Erfasser wird nun am Ende in eckigen Klammern mitgespeichert (z.B. "habe (für bilu) [bupa]")
+                // Der Erfasser wird nun am Ende in eckigen Klammern mitgespeichert (z.B. "[bilu]")
                 const verfasserString = `${uebernehmend} (für ${ausfall}) [${aktuellerUser}]`;
 
                 const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db`, {
