@@ -6429,7 +6429,17 @@ window.loadPlan = async function(isExplicitUserAction = false) {
 
                 const isAusfall = (halle === "Ausfall");
                 const isKlasseLeer = (klasse.trim() === "");
-                const lehrer = (verfasser !== "") ? verfasser : (lehrerDaten !== "" ? lehrerDaten : (window.allClassTeachers[klasse] || ""));
+                
+                // Erfasser aus eckigen Klammern extrahieren (z.B. "[bupa]")
+                let bracketUser = "";
+                const bracketMatch = verfasser.match(/\[(.*?)\]/);
+                if (bracketMatch) {
+                    bracketUser = bracketMatch[1].trim().toLowerCase();
+                }
+
+                // Text für die Anzeige bereinigen (eckige Klammern und deren Inhalt entfernen)
+                const displayVerfasser = verfasser.replace(/\s*\[.*?\]/g, '').trim();
+                const lehrer = (displayVerfasser !== "") ? displayVerfasser : (lehrerDaten !== "" ? lehrerDaten : (window.allClassTeachers[klasse] || ""));
                 
                 const isMyClass = !isKlasseLeer && window.myClasses.some(c => 
                     String(c).trim().toLowerCase() === klasse.trim().toLowerCase()
@@ -6444,20 +6454,20 @@ window.loadPlan = async function(isExplicitUserAction = false) {
                 }
 
                 const safeUserKuerzel = String(rawUserKuerzel).trim().toLowerCase();
-                const istMeinVerfasser = (verfasser.trim().toLowerCase() === safeUserKuerzel);
+                const istMeinVerfasser = (displayVerfasser.trim().toLowerCase() === safeUserKuerzel);
                 const istMeinLehrer = (lehrerDaten.trim().toLowerCase() === safeUserKuerzel);
 
-                // STV-Erkennung (z.B. "bupa (für bilu)")
-                const hasStvPattern = verfasser.includes('(für ');
+                // STV-Erkennung (z.B. "habe (für bilu)")
+                const hasStvPattern = displayVerfasser.includes('(für ');
                 let stvUebernehmend = "";
                 if (hasStvPattern) {
-                    const parts = verfasser.split(/\s*\(für\s+/i);
+                    const parts = displayVerfasser.split(/\s*\(für\s+/i);
                     stvUebernehmend = parts[0].trim().toLowerCase();
                 }
                 const isStvBox = hasStvPattern;
-                const istMeinStvVerfasser = (isStvBox && stvUebernehmend === safeUserKuerzel);
+                const istMeinStvVerfasser = (isStvBox && (stvUebernehmend === safeUserKuerzel || bracketUser === safeUserKuerzel));
 
-                const isMyBooking = (safeUserKuerzel !== "" && (istMeinVerfasser || istMeinLehrer || istMeinStvVerfasser));
+                const isMyBooking = (safeUserKuerzel !== "" && (istMeinVerfasser || istMeinLehrer || istMeinStvVerfasser || bracketUser === safeUserKuerzel));
                 const canEdit = isMyClass || isMyBooking;
                 
                 const hallenObj = (window.hallenConfig && window.hallenConfig[halle]) ? window.hallenConfig[halle] : null;
@@ -6506,6 +6516,7 @@ window.loadPlan = async function(isExplicitUserAction = false) {
         container.innerHTML = `<div class="box info-box" style="color:red; grid-column: span 6;">Fehler: Daten konnten nicht geladen werden.</div>`;
     }
 };
+    
     
 /* ============================================================
    ZENTRALE KLICK-STEUERUNG (MIT KONSOLE-PRÜFUNG)
@@ -6715,21 +6726,31 @@ window.syncPlan = async function() {
             const isAusfall = (halle === "Ausfall");
             const isKlasseLeer = (klasse.trim() === "");
             
-            const lehrer = (verfasser !== "") ? verfasser : (lehrerDaten !== "" ? lehrerDaten : (allClassTeachers[klasse] || ""));
-            const istMeinVerfasser = (verfasser.trim().toLowerCase() === safeUserKuerzel);
+            // Erfasser aus eckigen Klammern extrahieren (z.B. "[bupa]")
+            let bracketUser = "";
+            const bracketMatch = verfasser.match(/\[(.*?)\]/);
+            if (bracketMatch) {
+                bracketUser = bracketMatch[1].trim().toLowerCase();
+            }
+
+            // Text für die Anzeige bereinigen (eckige Klammern und deren Inhalt entfernen)
+            const displayVerfasser = verfasser.replace(/\s*\[.*?\]/g, '').trim();
+            const lehrer = (displayVerfasser !== "") ? displayVerfasser : (lehrerDaten !== "" ? lehrerDaten : (allClassTeachers[klasse] || ""));
+            
+            const istMeinVerfasser = (displayVerfasser.trim().toLowerCase() === safeUserKuerzel);
             const istMeinLehrer = (lehrerDaten.trim().toLowerCase() === safeUserKuerzel);
 
             // STV-Erkennung (z.B. "bupa (für bilu)")
-            const hasStvPattern = verfasser.includes('(für ');
+            const hasStvPattern = displayVerfasser.includes('(für ');
             let stvUebernehmend = "";
             if (hasStvPattern) {
-                const parts = verfasser.split(/\s*\(für\s+/i);
+                const parts = displayVerfasser.split(/\s*\(für\s+/i);
                 stvUebernehmend = parts[0].trim().toLowerCase();
             }
             const isStvBox = hasStvPattern;
-            const istMeinStvVerfasser = (isStvBox && stvUebernehmend === safeUserKuerzel);
+            const istMeinStvVerfasser = (isStvBox && (stvUebernehmend === safeUserKuerzel || bracketUser === safeUserKuerzel));
 
-            const isMyBooking = (safeUserKuerzel !== "" && (istMeinVerfasser || istMeinLehrer || istMeinStvVerfasser));
+            const isMyBooking = (safeUserKuerzel !== "" && (istMeinVerfasser || istMeinLehrer || istMeinStvVerfasser || bracketUser === safeUserKuerzel));
             const isMyClass = !isKlasseLeer && myClasses.some(c => String(c).trim().toLowerCase() === klasse.trim().toLowerCase());
             const canEdit = isMyClass || isMyBooking;
             
