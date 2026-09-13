@@ -7556,13 +7556,17 @@ window.closeNews = () => {
    ============================================================ */
 
 window.openEditor = function(el, time, slot, klasse) {
-    // --- NEUER TÜRSTEHER ---
-    // Wenn der Verschiebemodus aktiv ist, darf sich der Editor für NICHTS öffnen!
     if (window.moveMode) {
         console.log("Verschiebemodus aktiv: Editor blockiert.");
         return; 
     }
-    // -----------------------
+
+    // Sichere Klassen-Extraktion falls via setBoxClick leer übergeben
+    if (!klasse && el) {
+        const kEl = el.querySelector('.klasse-label');
+        if (kEl) klasse = kEl.innerText.trim();
+    }
+    klasse = klasse || "Auswahl";
 
     closeEditor();
 
