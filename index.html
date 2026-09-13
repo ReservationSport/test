@@ -13734,6 +13734,18 @@ async function oeffneVertretungsDialog() {
     const existingModal = document.getElementById('vertretungs-uebersicht-modal');
     if (existingModal) existingModal.remove();
 
+    // Eingeloggten User ermitteln
+    let rawUserKuerzel = "";
+    if (typeof userKuerzel === 'string' && userKuerzel.trim() !== "") {
+        rawUserKuerzel = userKuerzel;
+    } else if (typeof window.userKuerzel === 'string' && window.userKuerzel.trim() !== "") {
+        rawUserKuerzel = window.userKuerzel;
+    } else {
+        const el = document.getElementById('userKuerzel');
+        rawUserKuerzel = el ? (el.value || "") : "";
+    }
+    const eingeloggtUser = String(rawUserKuerzel).trim() || "Unbekannt";
+
     const modalHtml = `
         <div id="vertretungs-uebersicht-modal" class="modal-overlay" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20000; justify-content: center; align-items: center;">
             <div class="modal-content" style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 680px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
@@ -13741,7 +13753,8 @@ async function oeffneVertretungsDialog() {
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <div>
                         <h2 style="color: #fff; margin: 0 0 5px 0; font-size: 20px;">Vertretungs-Übersicht</h2>
-                        <p style="font-size: 0.85em; color: #aaa; margin: 0;">Aktuelle und zukünftige Stellvertretungen.</p>
+                        <p style="font-size: 0.85em; color: #aaa; margin: 0 0 3px 0;">Aktuelle Stellvertretungen</p>
+                        <p style="font-size: 0.8em; color: #e67e22; margin: 0;">Stellvertretung eingetragen von: ${eingeloggtUser}</p>
                     </div>
                     <button type="button" onclick="oeffneNeuenStvErfassungsDialog()" style="padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 5px; background: #e67e22; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
                         <span class="material-symbols-outlined" style="font-size: 18px;">add</span> Vertretung eintragen
@@ -13784,26 +13797,18 @@ async function renderStvEintraege() {
 
         if (error) throw error;
 
-        console.log("Rohdaten aus buchungen_db:", buchungenData);
-
-        // Lokales heutiges Datum im Format YYYY-MM-DD ermitteln (verhindert UTC-Verschiebungen)
+        // Lokales heutiges Datum im Format YYYY-MM-DD ermitteln
         const now = new Date();
         const yyyy = now.getFullYear();
         const mm = String(now.getMonth() + 1).padStart(2, '0');
         const dd = String(now.getDate()).padStart(2, '0');
         const heuteStr = `${yyyy}-${mm}-${dd}`;
-        console.log("Heutiges Vergleichs-Datum:", heuteStr);
 
         const stvEintraege = buchungenData ? buchungenData.filter(row => {
             const hasVerfasser = row.verfasser && row.verfasser.includes('(für ');
             const isFutureOrToday = row.datum >= heuteStr;
-            
-            console.log(`Eintrag ID ${row.id}: Datum=${row.datum} (>= heute? ${isFutureOrToday}), Verfasser=${row.verfasser} (hat '(für '? ${hasVerfasser})`);
-            
             return hasVerfasser && isFutureOrToday;
         }) : [];
-
-        console.log("Gefilterte Stellvertretungen für die Übersicht:", stvEintraege);
 
         if (stvEintraege.length === 0) {
             listeContainer.innerHTML = '<div style="color: #888; text-align: center; padding: 30px; background: #252525; border-radius: 6px;">Keine aktiven (heutigen oder zukünftigen) Stellvertretungen gefunden.</div>';
@@ -13842,7 +13847,7 @@ async function renderStvEintraege() {
             const packId = `stv-pack-details-${idx}`;
             const idsJson = JSON.stringify(group.ids).replace(/'/g, "&apos;");
 
-            // Detailzeilen untereinander aufbauen (Zeiten und Klassennamen)
+            // Detailzeilen untereinander aufbauen (statt Slot-Nummern nun die Unterrichtszeiten z.B. "07:30 - 09:00")
             let detailsListHtml = '';
             for (let i = 0; i < group.slots.length; i++) {
                 detailsListHtml += `
