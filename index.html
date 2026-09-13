@@ -13651,19 +13651,19 @@ window.cancelAddMode = function() {
 
 
 /* ==================================================================== */
-/* 11.1 Stellvertretungs-Übersicht & Löschen                            */
+/* 11.11 Stellvertretungs-Übersicht (Gesteuert über das Menü)           */
 /* ==================================================================== */
 
 /**
- * Öffnet die Stellvertretungs-Übersicht, erstellt das Modal falls nötig 
- * und lädt alle aktuellen Einträge aus Supabase.
+ * Öffnet beim Klick im Menü direkt die Stellvertretungs-Übersicht 
+ * und lädt alle Einträge aus Supabase.
  */
-async function oeffneVertretungsUebersicht() {
+async function oeffneVertretungsDialog() {
     // Falls ein altes Modal noch da ist, erst entfernen
     const existingModal = document.getElementById('vertretungs-uebersicht-modal');
     if (existingModal) existingModal.remove();
 
-    // Modal HTML dynamisch zusammenbauen
+    // Modal HTML für die Übersicht zusammenbauen
     const modalHtml = `
         <div id="vertretungs-uebersicht-modal" class="modal-overlay" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20000; justify-content: center; align-items: center;">
             <div class="modal-content" style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 650px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
@@ -13671,9 +13671,9 @@ async function oeffneVertretungsUebersicht() {
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <div>
                         <h2 style="color: #fff; margin: 0 0 5px 0; font-size: 20px;">Vertretungs-Übersicht</h2>
-                        <p style="font-size: 0.85em; color: #aaa; margin: 0;">Aktuelle und kommende Stellvertretungen im System.</p>
+                        <p style="font-size: 0.85em; color: #aaa; margin: 0;">Aktuelle Stellvertretungen im System.</p>
                     </div>
-                    <button type="button" class="btn-action btn-primary" onclick="oeffneNeuenStvEintragDialog()" style="padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 5px; background: #e67e22; color: #fff; border: none; border-radius: 4px; cursor: pointer;">
+                    <button type="button" onclick="oeffneNeuenStvErfassungsDialog()" style="padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 5px; background: #e67e22; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
                         <span class="material-symbols-outlined" style="font-size: 18px;">add</span> Neu eintragen
                     </button>
                 </div>
@@ -13683,17 +13683,16 @@ async function oeffneVertretungsUebersicht() {
                 </div>
 
                 <div class="modal-actions" style="display: flex; justify-content: flex-end;">
-                    <button type="button" class="btn-action btn-secondary" onclick="document.getElementById('vertretungs-uebersicht-modal').remove();" style="background: #444; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Schliessen</button>
+                    <button type="button" onclick="document.getElementById('vertretungs-uebersicht-modal').remove();" style="background: #444; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Schliessen</button>
                 </div>
 
             </div>
         </div>
     `;
 
-    // Modal ins Dokument einfügen
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    // Daten laden und anzeigen
+    // Daten aus Supabase laden und in der Übersicht anzeigen
     const listeContainer = document.getElementById('stv-uebersicht-liste');
     try {
         const { data: buchungenData, error } = await window.supabaseClient
@@ -13720,9 +13719,6 @@ async function oeffneVertretungsUebersicht() {
                 datumFormatted = `${tag}.${monat}.${jahr}`;
             }
 
-            // Extrahiere wer wen vertritt aus dem Format "bupa (für blfa)"
-            let textDetails = item.verfasser;
-
             html += `
                 <div style="background: #2a2a2a; border: 1px solid #444; border-left: 4px solid #e67e22; padding: 12px 15px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
                     <div>
@@ -13730,7 +13726,7 @@ async function oeffneVertretungsUebersicht() {
                             ${datumFormatted} — Slot ${item.slot} (Klasse: ${item.klasse || 'k.A.'})
                         </div>
                         <div style="font-size: 13px; color: #e67e22;">
-                            ${textDetails}
+                            ${item.verfasser}
                         </div>
                     </div>
                     <button type="button" onclick="loescheVertretungEintrag('${item.id}')" style="background: none; border: none; color: #e74c3c; cursor: pointer; display: flex; align-items: center;" title="Vertretung aufheben">
@@ -13745,33 +13741,6 @@ async function oeffneVertretungsUebersicht() {
     } catch (err) {
         console.error("Fehler beim Laden der Stellvertretungsübersicht:", err);
         listeContainer.innerHTML = '<div style="color: #e74c3c; text-align: center; padding: 20px;">Fehler beim Laden der Daten.</div>';
-    }
-}
-
-/**
- * Löscht einen spezifischen Stellvertretungs-Eintrag anhand seiner ID aus der Datenbank.
- */
-async function loescheVertretungEintrag(eintragId) {
-    if (!confirm("Möchtest du diese Stellvertretung wirklich aufheben?")) return;
-
-    try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?id=eq.${eintragId}`, {
-            method: 'DELETE',
-            headers: {
-                "apikey": SUPABASE_ANON_KEY,
-                "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-                "Content-Type": "application/json"
-            }
-        });
-
-        if (!response.ok) throw new Error("Fehler beim Löschen");
-
-        await oeffneVertretungsUebersicht();
-        if (typeof updateDisplay === 'function') updateDisplay();
-
-    } catch (err) {
-        console.error("Fehler beim Löschen der Stellvertretung:", err);
-        alert("Fehler beim Löschen: " + (err.message || err));
     }
 }
 
