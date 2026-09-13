@@ -7969,7 +7969,7 @@ window.saveImmediately = async function(payload, options = {}) {
         const dp = document.getElementById('datePicker');
         const dateVal = payload.datum || (dp ? dp.value : new Date().toISOString().split('T')[0]);
         const slotNum = parseInt(payload.slot, 10);
-        const aktuellesKuerzel = (typeof userKuerzel !== 'undefined' ? userKuerzel : (payload.kuerzel || payload.verfasser || "")).toString().trim();
+        const aktuellesKuerzel = (payload.verfasser || (typeof userKuerzel !== 'undefined' ? userKuerzel : "") || payload.kuerzel || "").toString().trim();
 
         const bookingData = {
             datum: dateVal,
