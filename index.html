@@ -13651,28 +13651,51 @@ window.cancelAddMode = function() {
 
 
 /* ==================================================================== */
-/* 11.11 Stellvertretungs-Übersicht & Löschen                            */
+/* 11.1 Stellvertretungs-Übersicht & Löschen                            */
 /* ==================================================================== */
 
 /**
- * Öffnet die Stellvertretungs-Übersicht, lädt die Daten aus Supabase 
- * und zeigt sie im Modal an.
+ * Öffnet die Stellvertretungs-Übersicht, erstellt das Modal falls nötig 
+ * und lädt alle aktuellen Einträge aus Supabase.
  */
 async function oeffneVertretungsUebersicht() {
-    const uebersichtModal = document.getElementById('vertretungs-uebersicht-modal');
-    if (uebersichtModal) {
-        uebersichtModal.style.display = 'flex';
-    }
+    // Falls ein altes Modal noch da ist, erst entfernen
+    const existingModal = document.getElementById('vertretungs-uebersicht-modal');
+    if (existingModal) existingModal.remove();
 
-    // Container in deinem HTML, in dem die Liste/Tabelle der Vertretungen ausgegeben wird
-    // (Passe die ID 'stv-uebersicht-liste' ggf. an die ID deines Containers an)
+    // Modal HTML dynamisch zusammenbauen
+    const modalHtml = `
+        <div id="vertretungs-uebersicht-modal" class="modal-overlay" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 20000; justify-content: center; align-items: center;">
+            <div class="modal-content" style="background: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 12px; width: 90%; max-width: 650px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); color: #fff; text-align: left; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="color: #fff; margin: 0 0 5px 0; font-size: 20px;">Vertretungs-Übersicht</h2>
+                        <p style="font-size: 0.85em; color: #aaa; margin: 0;">Aktuelle und kommende Stellvertretungen im System.</p>
+                    </div>
+                    <button type="button" class="btn-action btn-primary" onclick="oeffneNeuenStvEintragDialog()" style="padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 5px; background: #e67e22; color: #fff; border: none; border-radius: 4px; cursor: pointer;">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">add</span> Neu eintragen
+                    </button>
+                </div>
+
+                <div id="stv-uebersicht-liste" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; padding-right: 4px;">
+                    <div style="color: #aaa; text-align: center; padding: 20px;">Lade Vertretungen...</div>
+                </div>
+
+                <div class="modal-actions" style="display: flex; justify-content: flex-end;">
+                    <button type="button" class="btn-action btn-secondary" onclick="document.getElementById('vertretungs-uebersicht-modal').remove();" style="background: #444; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Schliessen</button>
+                </div>
+
+            </div>
+        </div>
+    `;
+
+    // Modal ins Dokument einfügen
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Daten laden und anzeigen
     const listeContainer = document.getElementById('stv-uebersicht-liste');
-    if (listeContainer) {
-        listeContainer.innerHTML = '<div style="color: #aaa; text-align: center; padding: 20px;">Lade Stellvertretungen...</div>';
-    }
-
     try {
-        // Wir laden alle Buchungen, die eine Stellvertretung enthalten (erkennbar an "(für ")
         const { data: buchungenData, error } = await window.supabaseClient
             .from('buchungen_db')
             .select('*')
@@ -13681,59 +13704,55 @@ async function oeffneVertretungsUebersicht() {
 
         if (error) throw error;
 
-        // Filtere nur Einträge heraus, die eine Stellvertretung sind (enthalten "(für ")
+        // Filtere Einträge, die eine Stellvertretung sind (enthalten "(für ")
         const stvEintraege = buchungenData ? buchungenData.filter(row => row.verfasser && row.verfasser.includes('(für ')) : [];
 
-        if (listeContainer) {
-            if (stvEintraege.length === 0) {
-                listeContainer.innerHTML = '<div style="color: #aaa; text-align: center; padding: 20px;">Keine aktiven Stellvertretungen erfasst.</div>';
-                return;
+        if (stvEintraege.length === 0) {
+            listeContainer.innerHTML = '<div style="color: #888; text-align: center; padding: 30px; background: #252525; border-radius: 6px;">Keine aktiven Stellvertretungen gefunden.</div>';
+            return;
+        }
+
+        let html = '';
+        stvEintraege.forEach(item => {
+            let datumFormatted = item.datum;
+            if (item.datum && item.datum.includes('-')) {
+                const [jahr, monat, tag] = item.datum.split('-');
+                datumFormatted = `${tag}.${monat}.${jahr}`;
             }
 
-            let html = '<table style="width: 100%; border-collapse: collapse; color: #fff; font-size: 13px;">';
-            html += '<tr style="border-bottom: 1px solid #444; text-align: left;"><th style="padding: 8px;">Datum</th><th style="padding: 8px;">Slot</th><th style="padding: 8px;">Klasse</th><th style="padding: 8px;">Vertretungs-Details</th><th style="padding: 8px; text-align: right;">Aktion</th></tr>';
+            // Extrahiere wer wen vertritt aus dem Format "bupa (für blfa)"
+            let textDetails = item.verfasser;
 
-            stvEintraege.forEach(eintrag => {
-                // Datum von YYYY-MM-DD in DD.MM.YYYY wandeln für schönere Anzeige
-                let datumAnzeige = eintrag.datum;
-                if (eintrag.datum && eintrag.datum.includes('-')) {
-                    const [j, m, t] = eintrag.datum.split('-');
-                    datumAnzeige = `${t}.${m}.${j}`;
-                }
+            html += `
+                <div style="background: #2a2a2a; border: 1px solid #444; border-left: 4px solid #e67e22; padding: 12px 15px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px; color: #fff; margin-bottom: 3px;">
+                            ${datumFormatted} — Slot ${item.slot} (Klasse: ${item.klasse || 'k.A.'})
+                        </div>
+                        <div style="font-size: 13px; color: #e67e22;">
+                            ${textDetails}
+                        </div>
+                    </div>
+                    <button type="button" onclick="loescheVertretungEintrag('${item.id}')" style="background: none; border: none; color: #e74c3c; cursor: pointer; display: flex; align-items: center;" title="Vertretung aufheben">
+                        <span class="material-symbols-outlined" style="font-size: 20px;">delete</span>
+                    </button>
+                </div>
+            `;
+        });
 
-                html += `
-                    <tr style="border-bottom: 1px solid #333;">
-                        <td style="padding: 8px;">${datumAnzeige}</td>
-                        <td style="padding: 8px;">Slot ${eintrag.slot}</td>
-                        <td style="padding: 8px;">${eintrag.klasse || '-'}</td>
-                        <td style="padding: 8px; color: #e67e22;">${eintrag.verfasser}</td>
-                        <td style="padding: 8px; text-align: right;">
-                            <button type="button" onclick="loescheVertretungEintrag('${eintrag.id}')" style="background: #c0392b; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">Löschen</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            html += '</table>';
-            listeContainer.innerHTML = html;
-        }
+        listeContainer.innerHTML = html;
 
     } catch (err) {
-        console.error("Fehler beim Laden der Stellvertretungs-Übersicht:", err);
-        if (listeContainer) {
-            listeContainer.innerHTML = '<div style="color: #e74c3c; text-align: center; padding: 20px;">Fehler beim Laden der Daten.</div>';
-        }
+        console.error("Fehler beim Laden der Stellvertretungsübersicht:", err);
+        listeContainer.innerHTML = '<div style="color: #e74c3c; text-align: center; padding: 20px;">Fehler beim Laden der Daten.</div>';
     }
 }
 
 /**
  * Löscht einen spezifischen Stellvertretungs-Eintrag anhand seiner ID aus der Datenbank.
- * @param {string|number} eintragId - Die ID des zu löschenden Eintrags
  */
 async function loescheVertretungEintrag(eintragId) {
-    if (!confirm("Möchtest du diesen Stellvertretungs-Eintrag wirklich löschen?")) {
-        return;
-    }
+    if (!confirm("Möchtest du diese Stellvertretung wirklich aufheben?")) return;
 
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/buchungen_db?id=eq.${eintragId}`, {
@@ -13745,13 +13764,10 @@ async function loescheVertretungEintrag(eintragId) {
             }
         });
 
-        if (!response.ok) {
-            throw new Error("Fehler beim Löschen des Eintrags aus der Datenbank.");
-        }
+        if (!response.ok) throw new Error("Fehler beim Löschen");
 
-        // Aktualisiere die Hauptanzeige und lade die Übersicht neu
+        await oeffneVertretungsUebersicht();
         if (typeof updateDisplay === 'function') updateDisplay();
-        oeffneVertretungsUebersicht();
 
     } catch (err) {
         console.error("Fehler beim Löschen der Stellvertretung:", err);
