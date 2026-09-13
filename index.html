@@ -13796,6 +13796,9 @@ async function renderStvEintraege() {
 
     listeContainer.innerHTML = '<div style="color: #aaa; text-align: center; padding: 20px;">Lade Vertretungen...</div>';
 
+    // Array für die genauen Unterrichtszeiten basierend auf dem Slot
+    const zeitenArray = ["07:15 - 08:00", "08:05 - 08:50", "08:55 - 09:40", "10:00 - 10:45", "10:50 - 11:35", "11:40 - 12:25", "12:50 - 13:35", "13:40 - 14:25", "14:30 - 15:15", "15:35 - 16:20", "16:25 - 17:10", "17:15 - 18:00"];
+
     try {
         const { data: buchungenData, error } = await window.supabaseClient
             .from('buchungen_db')
@@ -13853,11 +13856,24 @@ async function renderStvEintraege() {
             }
             grouped[key].slots.push(item.slot);
             
-            // Unterrichtszeit aus DB oder über globale Slot-Zeit-Funktionen/Mappings ermitteln
-            const unterrichtsZeit = item.zeit || item.time || item.uhrzeit || 
-                (typeof slotZeiten !== 'undefined' && slotZeiten[item.slot]) || 
-                (typeof getSlotZeit === 'function' && getSlotZeit(item.slot)) || 
-                `Slot ${item.slot}`;
+            // Unterrichtszeit aus Slot mathematisch berechnen oder Fallbacks nutzen
+            let unterrichtsZeit = item.zeit || item.time || item.uhrzeit;
+            if (!unterrichtsZeit && item.slot) {
+                const slotNum = parseInt(item.slot);
+                if (!isNaN(slotNum)) {
+                    const lektionIndex = Math.floor((slotNum - 1) / 5);
+                    const lektionNummer = lektionIndex + 1;
+                    const zeitStr = zeitenArray[lektionIndex];
+                    if (zeitStr) {
+                        unterrichtsZeit = `${lektionNummer}. Lektion (${zeitStr})`;
+                    }
+                }
+            }
+            if (!unterrichtsZeit) {
+                unterrichtsZeit = (typeof slotZeiten !== 'undefined' && slotZeiten[item.slot]) || 
+                    (typeof getSlotZeit === 'function' && getSlotZeit(item.slot)) || 
+                    `Slot ${item.slot}`;
+            }
             
             grouped[key].zeiten.push(unterrichtsZeit);
             grouped[key].klassen.push(item.klasse || 'Keine Angabe');
