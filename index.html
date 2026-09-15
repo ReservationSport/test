@@ -5842,8 +5842,12 @@ document.addEventListener('DOMContentLoaded', () => {
 const planContainer = document.getElementById('plan-container');
 
 if (planContainer) {
+    let clickTimeout = null;
+
     // 1. RECHTSKLICK: Kopieren
     planContainer.addEventListener('contextmenu', function(e) {
+        if (window.moveMode) return;
+
         const box = e.target.closest('.box:not(.zeit-box):not(.header-row)');
         if (!box) return;
         
@@ -5865,8 +5869,13 @@ if (planContainer) {
         }
     });
 
-    // 2. KLICK: Paste oder Editieren (inkl. STV-Boxen)
+    // 2. KLICK: Paste oder Editieren (mit Verzögerung, damit Doppelklick nicht "gefressen" wird)
     planContainer.addEventListener('click', function(e) {
+        if (window.moveMode) {
+            e.stopPropagation();
+            return;
+        }
+
         if (e.target.closest('.box-notiz-icon')) return;
 
         const box = e.target.closest('.box:not(.zeit-box):not(.header-row)');
@@ -5877,15 +5886,21 @@ if (planContainer) {
         const isStv = box.classList.contains('is-stv');
         const canEdit = isMine || isStv;
 
-        if (window.copiedSlotData) {
-            // --- PASTE-MODUS ---
-            if (canEdit && typeof performPaste === "function") {
-                e.stopPropagation();
-                performPaste(slot, window.copiedSlotData);
-            }
-        } else {
-            // --- NORMALER MODUS ---
-            if (canEdit) {
+        // Fremde Boxen komplett ignorieren
+        if (!canEdit) return;
+
+        // Wir warten kurz (250ms), ob ein Doppelklick folgt. Wenn nicht, öffnet sich der Editor/Paste.
+        if (clickTimeout) clearTimeout(clickTimeout);
+
+        clickTimeout = setTimeout(() => {
+            if (window.copiedSlotData) {
+                // --- PASTE-MODUS ---
+                if (typeof performPaste === "function") {
+                    e.stopPropagation();
+                    performPaste(slot, window.copiedSlotData);
+                }
+            } else {
+                // --- NORMALER MODUS ---
                 if (typeof openEditor === "function") {
                     const klasse = box.querySelector('.klasse-label')?.innerText || "";
                     const zeitStr = box.getAttribute('data-time') || "";
@@ -5894,15 +5909,31 @@ if (planContainer) {
                     openEditDialog(slot);
                 }
             }
-        }
+        }, 250);
     });
-}
 
-
-// 3. DOPPELKLICK: SharePoint-OneNote öffnen
+    // 3. DOPPELKLICK: SharePoint-OneNote öffnen (NUR für eigene Boxen)
     planContainer.addEventListener('dblclick', function(e) {
+        if (window.moveMode) {
+            e.stopPropagation();
+            return;
+        }
+
         const box = e.target.closest('.box:not(.zeit-box):not(.header-row)');
         if (!box) return;
+
+        const isMine = box.classList.contains('is-mine');
+        const isStv = box.classList.contains('is-stv');
+        const canEdit = isMine || isStv;
+
+        // WICHTIG: Wenn es nicht deine Box ist -> Sofort abbrechen!
+        if (!canEdit) return;
+
+        // Den wartenden Einfachklick-Timer löschen, damit sich nicht der Editor öffnet
+        if (clickTimeout) {
+            clearTimeout(clickTimeout);
+            clickTimeout = null;
+        }
 
         e.stopPropagation(); // Verhindert unerwünschte Nebeneffekte
 
@@ -5913,7 +5944,7 @@ if (planContainer) {
             return;
         }
 
-        // 2. Klasse aus der Box auslesen (passt zu deiner Logik mit .klasse-label)
+        // 2. Klasse aus der Box auslesen
         const klasse = box.querySelector('.klasse-label')?.innerText || "";
         if (!klasse) {
             console.log("Diese Box hat keine Klasse.");
@@ -5926,6 +5957,7 @@ if (planContainer) {
 
         window.open(sharePointUrl, '_blank');
     });
+}
 
 
 
@@ -6550,46 +6582,6 @@ window.loadPlan = async function(isExplicitUserAction = false) {
 };
     
     
-/* ============================================================
-   ZENTRALE KLICK-STEUERUNG (MIT KONSOLE-PRÜFUNG)
-   ============================================================ */
-window.setBoxClick = function(box, klasse, slot, canEdit) {
-    if (!box) return;
-    
-    // Prüfen, ob die Box beim Binden bereits als STV erkannt wurde
-    const initialStv = box.classList.contains('is-stv');
-    console.log(`[setBoxClick BIND] Slot: ${slot} | Klasse: ${klasse} | canEdit: ${canEdit} | is-stv: ${initialStv}`);
-
-    const handler = function(e) {
-        console.log(`[setBoxClick CLICK] Geklickter Slot: ${slot}`);
-        if (window.moveMode) {
-            console.log("-> Abbruch: moveMode aktiv");
-            e.stopPropagation();
-            return;
-        }
-        
-        const targetBox = e.currentTarget || box;
-        const isStv = targetBox.classList.contains('is-stv');
-        console.log(`-> Live-Check: canEdit=${canEdit}, isStv=${isStv}`);
-
-        if (!canEdit && !isStv) {
-            console.log("-> Abbruch: Weder canEdit noch isStv true!");
-            e.stopPropagation(); 
-            return;
-        }
-        
-        console.log("-> OK, starte openEditor");
-        if (typeof openEditor === "function") {
-            openEditor(targetBox, null, slot, klasse);
-        } else {
-            console.error("-> FEHLER: openEditor ist keine Funktion!");
-        }
-    };
-
-    const newBox = box.cloneNode(true);
-    newBox.addEventListener('click', handler);
-    box.replaceWith(newBox);
-};
 
 /* ============================================================
    Allgemeine Modal-Funktionen
