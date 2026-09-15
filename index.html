@@ -4787,14 +4787,13 @@ input.stellvertretung-input {
 
 
 
-<div id="onenote-settings-modal" class="modal">
-    <div class="modal-background" onclick="document.getElementById('onenote-settings-modal').classList.remove('is-active')"></div>
-    <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; max-width: 500px;">
-        <!-- Hier greift unsere Funktion von vorhin -->
+<!-- OneNote-Einstellungen Modal (angepasst an dein Projekt) -->
+<div id="onenote-settings-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+    <div class="modal-content" style="background: white; padding: 25px; border-radius: 8px; max-width: 500px; width: 90%; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+        <!-- Hier greift unsere Funktion -->
         <div id="onenote-submenu-content"></div>
-        <button class="button is-small" style="margin-top: 15px;" onclick="document.getElementById('onenote-settings-modal').classList.remove('is-active')">Schliessen</button>
+        <button class="button is-small" style="margin-top: 15px;" onclick="closeOneNoteSettingsModal()">Schliessen</button>
     </div>
-    <button class="modal-close is-large" aria-label="close" onclick="document.getElementById('onenote-settings-modal').classList.remove('is-active')"></button>
 </div>
 
     
@@ -14635,17 +14634,25 @@ async function speichereNeueStellvertretung() {
 /* ==================================================================== */
 
 
-function openOneNoteSettingsModal() {
-    // Falls du ein generelles Modal-System nutzt (z.B. Bulma Modal):
-    // 1. Modal einblenden
+window.openOneNoteSettingsModal = function() {
     const modal = document.getElementById('onenote-settings-modal');
     if (modal) {
-        modal.classList.add('is-active');
+        modal.style.display = 'flex'; // Sichtbar machen
+    } else {
+        console.error("Fehler: #onenote-settings-modal nicht gefunden!");
     }
     
-    // 2. Die Pfade laden und die Input-Felder für die Klassen generieren
-    renderOneNoteSettings();
-}
+    if (typeof renderOneNoteSettings === 'function') {
+        renderOneNoteSettings();
+    }
+};
+
+window.closeOneNoteSettingsModal = function() {
+    const modal = document.getElementById('onenote-settings-modal');
+    if (modal) {
+        modal.style.display = 'none'; // Verstecken
+    }
+};
 
 
 // Lädt alle OneNote-Pfade für den aktuellen User aus der master_db
