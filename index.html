@@ -5912,7 +5912,7 @@ if (planContainer) {
         }, 250);
     });
 
-    // 3. DOPPELKLICK: SharePoint-OneNote öffnen (NUR für eigene Boxen)
+   // 3. DOPPELKLICK: SharePoint-OneNote öffnen (NUR für eigene Boxen)
     planContainer.addEventListener('dblclick', function(e) {
         if (window.moveMode) {
             e.stopPropagation();
@@ -5937,15 +5937,20 @@ if (planContainer) {
 
         e.stopPropagation(); // Verhindert unerwünschte Nebeneffekte
 
-        // 1. Aktuelles Kürzel holen
-        const aktuellerUser = window.userKuerzel || localStorage.getItem('userKuerzel');
-        if (!aktuellerUser) {
-            alert("Kein Benutzerkürzel gefunden.");
+        // 1. Aktuelles Kürzel sauber als String extrahieren
+        let aktuellerUser = window.userKuerzel || localStorage.getItem('userKuerzel');
+        if (aktuellerUser && typeof aktuellerUser === 'object' && aktuellerUser.value) {
+            aktuellerUser = aktuellerUser.value;
+        }
+        aktuellerUser = String(aktuellerUser || "").trim();
+
+        if (!aktuellerUser || aktuellerUser.includes("HTMLInputElement")) {
+            alert("Kein gültiges Benutzerkürzel gefunden.");
             return;
         }
 
         // 2. Klasse aus der Box auslesen
-        const klasse = box.querySelector('.klasse-label')?.innerText || "";
+        const klasse = box.querySelector('.klasse-label')?.innerText.trim() || "";
         if (!klasse) {
             console.log("Diese Box hat keine Klasse.");
             return;
@@ -5957,9 +5962,6 @@ if (planContainer) {
 
         window.open(sharePointUrl, '_blank');
     });
-}
-
-
 
 
     
