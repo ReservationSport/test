@@ -5912,7 +5912,7 @@ if (planContainer) {
         }, 250);
     });
 
-   // 3. DOPPELKLICK: SharePoint-OneNote öffnen (NUR für eigene Boxen)
+    // 3. DOPPELKLICK: SharePoint-OneNote öffnen (NUR für eigene Boxen)
     planContainer.addEventListener('dblclick', function(e) {
         if (window.moveMode) {
             e.stopPropagation();
@@ -5962,6 +5962,7 @@ if (planContainer) {
 
         window.open(sharePointUrl, '_blank');
     });
+} // <--- Wichtig: Diese Klammer schließt das "if (planContainer)"
 
 
     
