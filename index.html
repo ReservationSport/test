@@ -14702,73 +14702,101 @@ async function renderOneNoteSettings() {
         return;
     }
 
-    // 1. Alle eigenen Klassen aus dem aktuellen Plan sammeln
-    const classesSet = new Set();
-    document.querySelectorAll('.box.is-mine, .box.is-stv').forEach(box => {
-        const klasse = box.querySelector('.klasse-label')?.innerText.trim();
-        if (klasse) classesSet.add(klasse);
-    });
-    const myClasses = Array.from(classesSet).sort();
+    container.innerHTML = `<p>Lade alle Klassen aus der Datenbank...</p>`;
 
-    // 2. HTML-Grundgerüst aufbauen
-    let html = `
-        <h4 class="title is-5">OneNote-Pfade pro Klasse</h4>
-        <p class="subtitle is-6">Trage hier den Link für die jeweiligen Klassen ein. Die Speicherung erfolgt direkt in der Datenbank.</p>
-        <div class="onenote-path-list" style="max-height: 350px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;">
-    `;
+    try {
+        // 1. Alle Klassen dieses Lehrers direkt aus der master_db abfragen
+        const { data, error } = await window.supabaseClient
+            .from('master_db')
+            .select('klasse, onenote_path')
+            .eq('lehrerkuerzel', aktuellerUser);
 
-    if (myClasses.length === 0) {
-        html += `<p>Keine eigenen Klassen im aktuellen Plan gefunden.</p>`;
-    } else {
-        myClasses.forEach(klasse => {
-            // Aktuellen Pfad aus dem lokalen Cache holen (falls vorhanden)
-            const currentPath = (window.oneNotePaths && window.oneNotePaths[klasse]) || '';
-            html += `
-                <div class="field is-horizontal" style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
-                    <label class="label" style="min-width: 70px; margin-bottom: 0;">${klasse}</label>
-                    <div class="control" style="flex-grow: 1;">
-                        <input class="input onenote-input-field" type="text" data-klasse="${klasse}" value="${currentPath}" placeholder="https://... oder onenote:...">
-                    </div>
-                </div>
-            `;
-        });
-        html += `</div><button class="button is-primary is-small" id="save-onenote-paths-btn">Pfade speichern</button>`;
-    }
-
-    container.innerHTML = html;
-
-    // 3. Speicher-Event verknüpfen (Update in master_db)
-    document.getElementById('save-onenote-paths-btn')?.addEventListener('click', async () => {
-        const inputs = container.querySelectorAll('.onenote-input-field');
-        let success = true;
-
-        for (const input of inputs) {
-            const klasse = input.getAttribute('data-klasse');
-            const pathVal = input.value.trim();
-
-            // In Supabase master_db die Spalte onenote_path aktualisieren
-            const { error } = await window.supabaseClient
-                .from('master_db')
-                .update({ onenote_path: pathVal })
-                .eq('lehrerkuerzel', aktuellerUser)
-                .eq('klasse', klasse);
-
-            if (error) {
-                console.error(`Fehler beim Speichern von Klasse ${klasse}:`, error);
-                success = false;
-            } else {
-                // Lokal im Cache aktualisieren
-                if (!window.oneNotePaths) window.oneNotePaths = {};
-                window.oneNotePaths[klasse] = pathVal;
-            }
+        if (error) {
+            console.error("Fehler beim Laden der Klassen:", error);
+            container.innerHTML = `<p class="has-text-danger">Fehler beim Laden der Klassen aus der Datenbank.</p>`;
+            return;
         }
 
-        if (success) {
-            alert("Pfade erfolgreich in der master_db gespeichert!");
+        // 2. Eindeutige Klassen sammeln und sortieren
+        const classesSet = new Set();
+        const pathMap = {};
+        if (data) {
+            data.forEach(row => {
+                if (row.klasse) {
+                    classesSet.add(row.klasse);
+                    if (row.onenote_path) {
+                        pathMap[row.klasse] = row.onenote_path;
+                    }
+                }
+            });
+        }
+        const myClasses = Array.from(classesSet).sort();
+
+        // Lokal im Cache sichern
+        window.oneNotePaths = pathMap;
+
+        // 3. HTML-Grundgerüst aufbauen
+        let html = `
+            <h4 class="title is-5">OneNote-Pfade pro Klasse</h4>
+            <p class="subtitle is-6">Trage hier den Link für deine Klassen ein. Die Speicherung erfolgt direkt in der Datenbank.</p>
+            <div class="onenote-path-list" style="max-height: 350px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;">
+        `;
+
+        if (myClasses.length === 0) {
+            html += `<p>Keine Klassen für dein Kürzel (${aktuellerUser}) in der master_db gefunden.</p>`;
         } else {
-            alert("Es gab beim Speichern ein Problem (siehe Konsole).");
+            myClasses.forEach(klasse => {
+                const currentPath = pathMap[klasse] || '';
+                html += `
+                    <div class="field is-horizontal" style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+                        <label class="label" style="min-width: 70px; margin-bottom: 0;">${klasse}</label>
+                        <div class="control" style="flex-grow: 1;">
+                            <input class="input onenote-input-field" type="text" data-klasse="${klasse}" value="${currentPath}" placeholder="https://... oder onenote:...">
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div><button class="button is-primary is-small" id="save-onenote-paths-btn">Pfade speichern</button>`;
         }
-    });
+
+        container.innerHTML = html;
+
+        // 4. Speicher-Event verknüpfen (Update in master_db)
+        document.getElementById('save-onenote-paths-btn')?.addEventListener('click', async () => {
+            const inputs = container.querySelectorAll('.onenote-input-field');
+            let success = true;
+
+            for (const input of inputs) {
+                const klasse = input.getAttribute('data-klasse');
+                const pathVal = input.value.trim();
+
+                // In Supabase master_db für jede Klasse den Pfad aktualisieren
+                const { error: updateError } = await window.supabaseClient
+                    .from('master_db')
+                    .update({ onenote_path: pathVal })
+                    .eq('lehrerkuerzel', aktuellerUser)
+                    .eq('klasse', klasse);
+
+                if (updateError) {
+                    console.error(`Fehler beim Speichern von Klasse ${klasse}:`, updateError);
+                    success = false;
+                } else {
+                    if (!window.oneNotePaths) window.oneNotePaths = {};
+                    window.oneNotePaths[klasse] = pathVal;
+                }
+            }
+
+            if (success) {
+                alert("Pfade erfolgreich in der master_db gespeichert!");
+            } else {
+                alert("Es gab beim Speichern ein Problem (siehe Konsole).");
+            }
+        });
+
+    } catch (e) {
+        console.error("Netzwerkfehler:", e);
+        container.innerHTML = `<p class="has-text-danger">Verbindungsfehler beim Laden.</p>`;
+    }
 }
     
 
