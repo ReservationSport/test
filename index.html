@@ -5899,6 +5899,38 @@ if (planContainer) {
 }
 
 
+// 3. DOPPELKLICK: SharePoint-OneNote öffnen
+    planContainer.addEventListener('dblclick', function(e) {
+        const box = e.target.closest('.box:not(.zeit-box):not(.header-row)');
+        if (!box) return;
+
+        e.stopPropagation(); // Verhindert unerwünschte Nebeneffekte
+
+        // 1. Aktuelles Kürzel holen
+        const aktuellerUser = window.userKuerzel || localStorage.getItem('userKuerzel');
+        if (!aktuellerUser) {
+            alert("Kein Benutzerkürzel gefunden.");
+            return;
+        }
+
+        // 2. Klasse aus der Box auslesen (passt zu deiner Logik mit .klasse-label)
+        const klasse = box.querySelector('.klasse-label')?.innerText || "";
+        if (!klasse) {
+            console.log("Diese Box hat keine Klasse.");
+            return;
+        }
+
+        // 3. SharePoint-URL dynamisch bauen und öffnen
+        const tenantBase = "https://bbzolten.sharepoint.com";
+        const sharePointUrl = `${tenantBase}/sites/BBZOSport/1_Vorlagen_Anleitungen/5_Klassen/${aktuellerUser}/${klasse}`;
+
+        window.open(sharePointUrl, '_blank');
+    });
+
+
+
+
+    
 /* ============================================================
    HILFSFUNKTION: Slot-Index zu Daten-Mapping
    ============================================================ */
