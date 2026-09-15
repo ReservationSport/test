@@ -5956,11 +5956,15 @@ if (planContainer) {
             return;
         }
 
-        // 3. SharePoint-URL dynamisch bauen und öffnen
+        // 3. SharePoint-URL in ein OneNote-Desktop-Protokoll umwandeln
         const tenantBase = "https://bbzolten.sharepoint.com";
         const sharePointUrl = `${tenantBase}/sites/BBZOSport/1_Vorlagen_Anleitungen/5_Klassen/${aktuellerUser}/${klasse}`;
 
-        window.open(sharePointUrl, '_blank');
+        // Der Trick: Aus dem https:// wird onenote:https:// oder direkt der Link, 
+        // damit OneNote merkt, dass es die Desktop-App starten soll:
+        const desktopUrl = `onenote:${sharePointUrl}`;
+
+        window.open(desktopUrl, '_blank');
     });
 } // <--- Wichtig: Diese Klammer schließt das "if (planContainer)"
 
