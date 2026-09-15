@@ -14705,11 +14705,11 @@ async function renderOneNoteSettings() {
     container.innerHTML = `<p>Lade alle Klassen aus der Datenbank...</p>`;
 
     try {
-        // 1. Alle Klassen dieses Lehrers direkt aus der master_db abfragen
+        // 1. Alle Klassen dieses Lehrers direkt aus der master_db abfragen (Spalte heißt 'lehrer')
         const { data, error } = await window.supabaseClient
             .from('master_db')
             .select('klasse, onenote_path')
-            .eq('lehrerkuerzel', aktuellerUser);
+            .ilike('lehrer', aktuellerUser);
 
         if (error) {
             console.error("Fehler beim Laden der Klassen:", error);
@@ -14774,7 +14774,7 @@ async function renderOneNoteSettings() {
                 const { error: updateError } = await window.supabaseClient
                     .from('master_db')
                     .update({ onenote_path: pathVal })
-                    .eq('lehrerkuerzel', aktuellerUser)
+                    .ilike('lehrer', aktuellerUser)
                     .eq('klasse', klasse);
 
                 if (updateError) {
