@@ -14659,7 +14659,7 @@ window.closeOneNoteSettingsModal = function() {
 };
 
 
-// Lädt alle OneNote-Pfade für den aktuellen User aus der master_db
+// Lädt alle OneNote-Pfade für den aktuellen User aus der master_db (inkl. Splitting von alternierenden Klassen)
 async function loadOneNotePathsFromSupabase() {
     // 🛡️ IMMER zuerst den localStorage prüfen, da dieser garantiert ein reiner Text-String ist!
     let rawUser = localStorage.getItem('userKuerzel') || window.userKuerzel || "";
@@ -14704,7 +14704,21 @@ async function loadOneNotePathsFromSupabase() {
         if (data && data.length > 0) {
             data.forEach(row => {
                 if (row.klasse && row.onenote_path) {
-                    window.oneNotePaths[row.klasse.toString().trim()] = row.onenote_path.toString().trim();
+                    let kuerzelString = row.klasse.toString().trim();
+                    let pfad = row.onenote_path.toString().trim();
+
+                    // Wenn es eine kombinierte/alternierende Klasse ist (z.B. "aaa25a / bbb25a")
+                    if (kuerzelString.includes('/')) {
+                        let einzellKlassen = kuerzelString.split('/');
+                        einzellKlassen.forEach(k => {
+                            let saubereKlasse = k.trim();
+                            if (saubereKlasse) {
+                                window.oneNotePaths[saubereKlasse] = pfad;
+                            }
+                        });
+                    } else {
+                        window.oneNotePaths[kuerzelString] = pfad;
+                    }
                 }
             });
             console.log("✅ OneNote-Pfade erfolgreich geladen und gecacht:", window.oneNotePaths);
@@ -14715,7 +14729,6 @@ async function loadOneNotePathsFromSupabase() {
         console.error("💥 Netzwerkfehler beim Laden der OneNote-Pfade:", e);
     }
 }
-
     
 
 async function renderOneNoteSettings() {
@@ -14743,11 +14756,11 @@ async function renderOneNoteSettings() {
     container.innerHTML = `<p style="color: #363636;">Lade alle Klassen aus der Datenbank...</p>`;
 
     try {
-        // 2. Abfrage aller Klassen für diesen Lehrer über die Spalte 'lehrer'
+        // 2. Abfrage aller Datensätze für diesen Lehrer über die Spalte 'lehrer'
         const { data, error } = await window.supabaseClient
             .from('master_db')
             .select('klasse, onenote_path')
-            .ilike('lehrer', aktuellerUser);
+            .ilike('lehrer', `%${aktuellerUser}%`);
 
         if (error) {
             console.error("Fehler beim Laden der Klassen:", error);
@@ -14755,15 +14768,31 @@ async function renderOneNoteSettings() {
             return;
         }
 
-        // 3. Eindeutige Klassen sammeln und sortieren
+        // 3. Eindeutige Einzeltasten/-klassen für die Ansicht aufsplitten
         const classesSet = new Set();
         const pathMap = {};
+        
         if (data) {
             data.forEach(row => {
                 if (row.klasse) {
-                    classesSet.add(row.klasse);
-                    if (row.onenote_path) {
-                        pathMap[row.klasse] = row.onenote_path;
+                    let kuerzelString = row.klasse.toString().trim();
+                    let pfad = row.onenote_path ? row.onenote_path.toString().trim() : '';
+
+                    // Prüfen ob alternierende Klasse mit Schrägstrich
+                    if (kuerzelString.includes('/')) {
+                        let einzellKlassen = kuerzelString.split('/');
+                        einzellKlassen.forEach(k => {
+                            let saubereKlasse = k.trim();
+                            if (saubereKlasse) {
+                                classesSet.add(saubereKlasse);
+                                // Da in der DB bei kombinierten Zeilen oft nur ein Pfad steht, 
+                                // weisen wir ihn vorerst beiden zu, falls kein spezifischer da ist
+                                pathMap[saubereKlasse] = pfad;
+                            }
+                        });
+                    } else {
+                        classesSet.add(kuerzelString);
+                        pathMap[kuerzelString] = pfad;
                     }
                 }
             });
@@ -14776,7 +14805,7 @@ async function renderOneNoteSettings() {
         // 4. HTML-Inhalt des Modals generieren
         let html = `
             <h4 class="title is-5" style="color: #363636;">OneNote-Pfade pro Klasse</h4>
-            <p class="subtitle is-6" style="color: #4a4a4a;">Trage hier den Link für deine Klassen ein. Die Speicherung erfolgt direkt in der Datenbank.</p>
+            <p class="subtitle is-6" style="color: #4a4a4a;">Trage hier den Link für deine Klassen ein. Alternierende Klassen werden separat aufgeführt.</p>
             <div class="onenote-path-list" style="max-height: 350px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;">
         `;
 
@@ -14787,7 +14816,7 @@ async function renderOneNoteSettings() {
                 const currentPath = pathMap[klasse] || '';
                 html += `
                     <div class="field is-horizontal" style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
-                        <label class="label" style="min-width: 70px; margin-bottom: 0; color: #363636 !important; font-weight: bold;">${klasse}</label>
+                        <label class="label" style="min-width: 90px; margin-bottom: 0; color: #363636 !important; font-weight: bold;">${klasse}</label>
                         <div class="control" style="flex-grow: 1;">
                             <input class="input onenote-input-field" type="text" data-klasse="${klasse}" value="${currentPath}" placeholder="https://... oder onenote:...">
                         </div>
@@ -14799,28 +14828,56 @@ async function renderOneNoteSettings() {
 
         container.innerHTML = html;
 
-        // 5. Speicher-Logik beim Klick auf den Button
+        // 5. Speicher-Logik beim Klick auf den Button (mit intelligenter Erkennung alternierender Zeilen)
         document.getElementById('save-onenote-paths-btn')?.addEventListener('click', async () => {
             const inputs = container.querySelectorAll('.onenote-input-field');
             let success = true;
 
             for (const input of inputs) {
-                const klasse = input.getAttribute('data-klasse');
+                const zielKlasse = input.getAttribute('data-klasse');
                 const pathVal = input.value.trim();
 
-                // Update in der master_db für jede Klasse
-                const { error: updateError } = await window.supabaseClient
+                // Wir suchen in der master_db nach Zeilen, die diese Klasse entweder exakt enthalten 
+                // oder als Teil einer alternierenden Klasse (z.B. "aaa25a / bbb25a") vorkommen.
+                // Da .eq() exakt sucht, holen wir die relevanten Zeilen über ilike oder prüfen das Ergebnis.
+                const { data: matchData, error: matchError } = await window.supabaseClient
                     .from('master_db')
-                    .update({ onenote_path: pathVal })
-                    .ilike('lehrer', aktuellerUser)
-                    .eq('klasse', klasse);
+                    .select('id, klasse, lehrer')
+                    .ilike('lehrer', `%${aktuellerUser}%`)
+                    .ilike('klasse', `%${zielKlasse}%`);
 
-                if (updateError) {
-                    console.error(`Fehler beim Speichern von Klasse ${klasse}:`, updateError);
+                if (matchError) {
+                    console.error(`Fehler beim Suchen der Klasse ${zielKlasse}:`, matchError);
                     success = false;
-                } else {
-                    if (!window.oneNotePaths) window.oneNotePaths = {};
-                    window.oneNotePaths[klasse] = pathVal;
+                    continue;
+                }
+
+                if (matchData && matchData.length > 0) {
+                    // Wir suchen die passendste Zeile (entweder exakter Treffer oder enthält den Schrägstrich mit der Klasse)
+                    let targetRow = matchData.find(row => {
+                        let kStr = row.klasse.toString().trim();
+                        if (kStr === zielKlasse) return true;
+                        if (kStr.includes('/')) {
+                            return kStr.split('/').map(k => k.trim()).includes(zielKlasse);
+                        }
+                        return false;
+                    });
+
+                    if (targetRow) {
+                        // Update in der master_db ausführen
+                        const { error: updateError } = await window.supabaseClient
+                            .from('master_db')
+                            .update({ onenote_path: pathVal })
+                            .eq('id', targetRow.id); // Update über die eindeutige ID ist am sichersten!
+
+                        if (updateError) {
+                            console.error(`Fehler beim Speichern von Klasse ${zielKlasse}:`, updateError);
+                            success = false;
+                        } else {
+                            if (!window.oneNotePaths) window.oneNotePaths = {};
+                            window.oneNotePaths[zielKlasse] = pathVal;
+                        }
+                    }
                 }
             }
 
