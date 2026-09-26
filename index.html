@@ -14658,7 +14658,7 @@ window.closeOneNoteSettingsModal = function() {
 };
 
 
-// Lädt alle OneNote-Pfade für den aktuellen User aus der master_db (Splittet alternierende Pfade mit "/" auf)
+// Lädt alle OneNote-Pfade für den aktuellen User aus der master_db (Splittet alternierende Pfade mit " / " auf)
 async function loadOneNotePathsFromSupabase() {
     let rawUser = localStorage.getItem('userKuerzel') || window.userKuerzel || "";
     if (typeof rawUser === 'object' && rawUser !== null) {
@@ -14698,22 +14698,22 @@ async function loadOneNotePathsFromSupabase() {
 
                     if (kuerzelString.includes('/')) {
                         let einzellKlassen = kuerzelString.split('/').map(k => k.trim());
-                        let pteile = rawPath.split('/').map(p => p.trim());
+                        
+                        // Exakter Split am Leerzeichen-Slash-Leerzeichen " / "
+                        let pteile = rawPath.includes(' / ') ? rawPath.split(' / ') : [rawPath, ''];
 
-                        // Erste Klasse bekommt den linken Teil des Pfads (vor dem /)
                         if (einzellKlassen[0]) {
-                            window.oneNotePaths[einzellKlassen[0]] = pteile[0] || '';
+                            window.oneNotePaths[einzellKlassen[0]] = (pteile[0] || '').trim();
                         }
-                        // Zweite Klasse bekommt den rechten Teil des Pfads (nach dem /)
                         if (einzellKlassen[1]) {
-                            window.oneNotePaths[einzellKlassen[1]] = pteile[1] || '';
+                            window.oneNotePaths[einzellKlassen[1]] = (pteile[1] || '').trim();
                         }
                     } else {
                         window.oneNotePaths[kuerzelString] = rawPath;
                     }
                 }
             });
-            console.log("✅ OneNote-Pfade erfolgreich geladen (inkl. alternierender Split):", window.oneNotePaths);
+            console.log("✅ OneNote-Pfade erfolgreich geladen:", window.oneNotePaths);
         }
     } catch (e) {
         console.error("💥 Netzwerkfehler beim Laden der OneNote-Pfade:", e);
@@ -14766,15 +14766,15 @@ async function renderOneNoteSettings() {
 
                     if (kuerzelString.includes('/')) {
                         let einzellKlassen = kuerzelString.split('/').map(k => k.trim());
-                        let pteile = rawPath.split('/').map(p => p.trim());
+                        let pteile = rawPath.includes(' / ') ? rawPath.split(' / ') : [rawPath, ''];
 
                         if (einzellKlassen[0]) {
                             classesSet.add(einzellKlassen[0]);
-                            pathMap[einzellKlassen[0]] = pteile[0] || '';
+                            pathMap[einzellKlassen[0]] = (pteile[0] || '').trim();
                         }
                         if (einzellKlassen[1]) {
                             classesSet.add(einzellKlassen[1]);
-                            pathMap[einzellKlassen[1]] = pteile[1] || '';
+                            pathMap[einzellKlassen[1]] = (pteile[1] || '').trim();
                         }
                     } else {
                         classesSet.add(kuerzelString);
@@ -14811,12 +14811,11 @@ async function renderOneNoteSettings() {
 
         container.innerHTML = html;
 
-        // Speicher-Logik mit intelligenter / Trennung für alternierende Klassen
+        // Speicher-Logik mit exakter Trennung am " / " für alternierende Klassen
         document.getElementById('save-onenote-paths-btn')?.addEventListener('click', async () => {
             const inputs = container.querySelectorAll('.onenote-input-field');
             let success = true;
 
-            // Wir holen alle betroffenen Zeilen aus der DB, um sie gezielt zu aktualisieren
             for (const input of inputs) {
                 const zielKlasse = input.getAttribute('data-klasse');
                 const newPathVal = input.value.trim();
@@ -14841,23 +14840,27 @@ async function renderOneNoteSettings() {
 
                         if (kStr.includes('/')) {
                             let parts = kStr.split('/').map(k => k.trim());
-                            let existingParts = existingDbPath.split('/').map(p => p.trim());
                             
-                            let part1 = existingParts[0] || '';
-                            let part2 = existingParts[1] || '';
+                            // Bestehenden DB-Pfad sicher am " / " trennen
+                            let existingParts = existingDbPath.includes(' / ') 
+                                ? existingDbPath.split(' / ') 
+                                : [existingDbPath, ''];
+                            
+                            let part1 = (existingParts[0] || '').trim();
+                            let part2 = (existingParts[1] || '').trim();
 
-                            // Prüfen, welche der beiden Klassen im Modal gerade bearbeitet wird
+                            // Gezieltes Ersetzen je nachdem, welche Klasse im Modal gespeichert wird
                             if (parts[0].toLowerCase() === zielKlasse.toLowerCase()) {
                                 part1 = newPathVal;
                             } else if (parts[1].toLowerCase() === zielKlasse.toLowerCase()) {
                                 part2 = newPathVal;
                             }
 
-                            // Zusammenfügen mit Schrägstrich im gewünschten Format (z.B. "link1 / link2")
-                            finalPathToSave = `${part1} / ${part2}`.trim();
+                            // Wieder im Format "Link1 / Link2" zusammenbauen
+                            finalPathToSave = `${part1} / ${part2}`;
                         }
 
-                        // In Datenbank speichern über die eindeutige ID
+                        // Update in der Datenbank über die ID
                         const { error: updateError } = await window.supabaseClient
                             .from('master_db')
                             .update({ onenote_path: finalPathToSave })
@@ -14873,7 +14876,7 @@ async function renderOneNoteSettings() {
 
             if (success) {
                 alert("Pfade erfolgreich in der master_db gespeichert!");
-                loadOneNotePathsFromSupabase(); // Cache sofort aktualisieren
+                loadOneNotePathsFromSupabase();
             } else {
                 alert("Es gab beim Speichern ein Problem (siehe Konsole).");
             }
