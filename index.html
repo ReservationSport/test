@@ -14659,18 +14659,25 @@ window.closeOneNoteSettingsModal = function() {
 
 // Lädt alle OneNote-Pfade für den aktuellen User aus der master_db
 async function loadOneNotePathsFromSupabase() {
-    let aktuellerUser = window.userKuerzel || localStorage.getItem('userKuerzel');
-    if (aktuellerUser && typeof aktuellerUser === 'object' && aktuellerUser.value) {
-        aktuellerUser = aktuellerUser.value;
+    let rawUser = window.userKuerzel || localStorage.getItem('userKuerzel');
+    if (rawUser && typeof rawUser === 'object') {
+        rawUser = rawUser.value || rawUser.getAttribute?.('value') || "";
     }
-    aktuellerUser = String(aktuellerUser || "").trim();
+    let aktuellerUser = String(rawUser || "").trim().toLowerCase();
+
+    if (!aktuellerUser || aktuellerUser.includes('input')) {
+        const inputEl = document.getElementById('userKuerzel');
+        if (inputEl) aktuellerUser = inputEl.value.trim().toLowerCase();
+    }
+
     if (!aktuellerUser) return;
 
     try {
+        // Korrekt mit .ilike('lehrer', ...) abgefragt wie im Modal
         const { data, error } = await window.supabaseClient
             .from('master_db')
             .select('klasse, onenote_path')
-            .eq('lehrerkuerzel', aktuellerUser);
+            .ilike('lehrer', aktuellerUser);
 
         if (error) {
             console.error("Fehler beim Laden der OneNote-Pfade:", error);
@@ -14683,11 +14690,11 @@ async function loadOneNotePathsFromSupabase() {
         if (data) {
             data.forEach(row => {
                 if (row.klasse && row.onenote_path) {
-                    window.oneNotePaths[row.klasse] = row.onenote_path;
+                    window.oneNotePaths[row.klasse.toString().trim()] = row.onenote_path.toString().trim();
                 }
             });
         }
-        console.log("OneNote-Pfade erfolgreich geladen:", window.oneNotePaths);
+        console.log("OneNote-Pfade beim Start erfolgreich geladen:", window.oneNotePaths);
     } catch (e) {
         console.error("Netzwerkfehler beim Laden der OneNote-Pfade:", e);
         window.oneNotePaths = {};
