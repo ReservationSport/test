@@ -5049,6 +5049,7 @@ window.lastPlanData = {};        // Kompatibilitäts-Alias für Material-Funktio
 let configFarben = {};            // Farben für Klassen aus dem Sheet
 let allClassTeachers = {};        // Zuordnung Klasse -> Kürzel
 window.verfügbareMaterialien = []; // Liste der Materialien aus dem Sheet
+window.oneNotePaths = {}; // Garantiert, dass es nie undefined ist!
 
 // Falls ein externer Server-Endpoint (z.B. Google Apps Script) genutzt wird:
 let url = ""; 
@@ -14671,33 +14672,38 @@ async function loadOneNotePathsFromSupabase() {
         if (inputEl) aktuellerUser = inputEl.value.trim().toLowerCase();
     }
 
-    if (!aktuellerUser) return;
+    console.log("🔍 OneNote-Loader: Versuche Pfade zu laden für Kürzel:", aktuellerUser);
+
+    if (!aktuellerUser) {
+        console.warn("⚠️ OneNote-Loader abgebrochen: Kein Kürzel gefunden!");
+        return;
+    }
 
     try {
-        // 🔥 WICHTIG: Mit %-Zeichen, damit es auch in kombinierten Lehrerfeldern (z.B. "mueller, schmidt") gefunden wird!
         const { data, error } = await window.supabaseClient
             .from('master_db')
             .select('klasse, onenote_path')
             .ilike('lehrer', `%${aktuellerUser}%`);
 
         if (error) {
-            console.error("Fehler beim Laden der OneNote-Pfade:", error);
-            window.oneNotePaths = {};
+            console.error("❌ Fehler beim Laden der OneNote-Pfade aus Supabase:", error);
             return;
         }
 
-        window.oneNotePaths = {};
-        if (data) {
+        if (!window.oneNotePaths) window.oneNotePaths = {};
+        
+        if (data && data.length > 0) {
             data.forEach(row => {
                 if (row.klasse && row.onenote_path) {
                     window.oneNotePaths[row.klasse.toString().trim()] = row.onenote_path.toString().trim();
                 }
             });
+            console.log("✅ OneNote-Pfade erfolgreich geladen und gecacht:", window.oneNotePaths);
+        } else {
+            console.warn("⚠️ Supabase hat keine Einträge für das Kürzel", aktuellerUser, "in master_db gefunden.");
         }
-        console.log("OneNote-Pfade erfolgreich geladen:", window.oneNotePaths);
     } catch (e) {
-        console.error("Netzwerkfehler beim Laden der OneNote-Pfade:", e);
-        window.oneNotePaths = {};
+        console.error("💥 Netzwerkfehler beim Laden der OneNote-Pfade:", e);
     }
 }
 
