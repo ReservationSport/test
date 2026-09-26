@@ -14681,7 +14681,7 @@ async function speichereNeueStellvertretung() {
 
     
 /* ==================================================================== */
-/* 11.12 OneNote-Pfad eintragen (Angepasst an das Dark-Design) */
+/* 11.12 OneNote-Pfad eintragen (Dark-Design & Fehlerbereinigt) */
 /* ==================================================================== */
 
 window.openOneNoteSettingsModal = function() {
@@ -14740,8 +14740,8 @@ async function loadOneNotePathsFromSupabase() {
         if (data && data.length > 0) {
             data.forEach(row => {
                 if (row.klasse && row.onenote_path) {
-                    let kuerzelString = row.klasse.toString().trim();
-                    let rawPath = row.onenote_path.toString().trim();
+                    let kuerzelString = String(row.klasse).trim();
+                    let rawPath = String(row.onenote_path).trim();
 
                     if (kuerzelString.includes('/')) {
                         let einzellKlassen = kuerzelString.split('/').map(k => k.trim());
@@ -14821,8 +14821,8 @@ async function renderOneNoteSettings() {
         if (data) {
             data.forEach(row => {
                 if (row.klasse) {
-                    let kuerzelString = row.klasse.toString().trim();
-                    let rawPath = row.onenote_path ? row.onenote_path.toString().trim() : '';
+                    let kuerzelString = String(row.klasse).trim();
+                    let rawPath = row.onenote_path ? String(row.onenote_path).trim() : '';
 
                     if (kuerzelString.includes('/')) {
                         let einzellKlassen = kuerzelString.split('/').map(k => k.trim());
@@ -14872,10 +14872,15 @@ async function renderOneNoteSettings() {
         } else {
             myClasses.forEach(klasse => {
                 const currentPath = pathMap[klasse] || '';
+                
+                // Schutz vor Zeilenumbrüchen und defekten Attributen
+                const safeKlasse = String(klasse).replace(/[\r\n]+/g, '').trim();
+                const safePath = String(currentPath).replace(/[\r\n]+/g, '').replace(/"/g, '&quot;').trim();
+
                 html += `
                     <div style="background: #2c2c2c; border-left: 4px solid #e67e22; padding: 10px 12px; margin-bottom: 8px; border-radius: 4px; display: flex; flex-direction: column; gap: 5px;">
-                        <span style="font-weight: bold; font-size: 0.9em; color: white;">${klasse}</span>
-                        <input class="onenote-input-field" type="text" data-klasse="${klasse}" value="${currentPath}" placeholder="https://... oder onenote:..." style="width: 100%; padding: 8px; border: 1px solid #444; border-radius: 4px; background: #1e1e1e; color: white; box-sizing: border-box; font-size: 0.85em;">
+                        <span style="font-weight: bold; font-size: 0.9em; color: white;">${safeKlasse}</span>
+                        <input class="onenote-input-field" type="text" data-klasse="${safeKlasse}" value="${safePath}" placeholder="https://... oder onenote:..." style="width: 100%; padding: 8px; border: 1px solid #444; border-radius: 4px; background: #1e1e1e; color: white; box-sizing: border-box; font-size: 0.85em;">
                     </div>
                 `;
             });
@@ -14885,13 +14890,13 @@ async function renderOneNoteSettings() {
 
         container.innerHTML = html;
 
-        // CSS-Schatten / Focus-Effekt für die Inputs dynamisch ansprechen
+        // Focus-Effekte für Inputs
         container.querySelectorAll('.onenote-input-field').forEach(inp => {
             inp.addEventListener('focus', () => inp.style.borderColor = '#e67e22');
             inp.addEventListener('blur', () => inp.style.borderColor = '#444');
         });
 
-        // Speicher-Logik
+        // Speicher-Logik mit sauberer Abfrage
         document.getElementById('save-onenote-paths-btn')?.addEventListener('click', async () => {
             const inputs = container.querySelectorAll('.onenote-input-field');
             let success = true;
@@ -14904,7 +14909,7 @@ async function renderOneNoteSettings() {
                     .from('master_db')
                     .select('id, klasse, onenote_path')
                     .ilike('lehrer', `%${aktuellerUser}%`)
-                    .ilike('klasse`, `%${zielKlasse}%`);
+                    .ilike('klasse', `%${zielKlasse}%`); // Syntaxfehler korrigiert!
 
                 if (matchError) {
                     console.error(`Fehler beim Suchen der Klasse ${zielKlasse}:`, matchError);
@@ -14914,8 +14919,8 @@ async function renderOneNoteSettings() {
 
                 if (matchData && matchData.length > 0) {
                     for (const row of matchData) {
-                        let kStr = row.klasse.toString().trim();
-                        let existingDbPath = row.onenote_path ? row.onenote_path.toString().trim() : '';
+                        let kStr = String(row.klasse).trim();
+                        let existingDbPath = row.onenote_path ? String(row.onenote_path).trim() : '';
                         let finalPathToSave = newPathVal;
 
                         if (kStr.includes('/')) {
