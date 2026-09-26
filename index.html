@@ -14661,14 +14661,20 @@ window.closeOneNoteSettingsModal = function() {
 
 // Lädt alle OneNote-Pfade für den aktuellen User aus der master_db
 async function loadOneNotePathsFromSupabase() {
-    // 🛡️ Direkt als Erstes hart aus dem localStorage oder der globalen Variable holen!
-    let aktuellerUser = (window.userKuerzel || localStorage.getItem('userKuerzel') || "").trim().toLowerCase();
+    let rawUser = window.userKuerzel || localStorage.getItem('userKuerzel') || "";
+    
+    // Sicherstellen, dass rawUser ein String ist
+    if (typeof rawUser === 'object') {
+        rawUser = rawUser.value || rawUser.toString() || "";
+    }
+    
+    let aktuellerUser = String(rawUser).trim().toLowerCase();
 
     // Falls immer noch ein HTML-Input Objekt abgefangen wird
     if (aktuellerUser.includes('input') || aktuellerUser === '') {
         const inputEl = document.getElementById('userKuerzel');
         if (inputEl && inputEl.value) {
-            aktuellerUser = inputEl.value.trim().toLowerCase();
+            aktuellerUser = String(inputEl.value).trim().toLowerCase();
         }
     }
 
