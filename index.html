@@ -5182,11 +5182,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.warn("⚠️ Fehler beim Wiederherstellen der Session:", sessionErr);
         }
 
-        // 3. Basis-Caches laden
+    // 3. Basis-Caches laden
         try {
             await Promise.all([
                 window.initSperrzeitenCache(),
-                window.initTeachersCache()
+                window.initTeachersCache(),
+                loadOneNotePathsFromSupabase() // <--- GENAU HIER EINFÜGEN (Komma in der Zeile darüber nicht vergessen!)
             ]);
         } catch (cacheErr) {
             console.warn("⚠️ Caches konnten nicht geladen werden:", cacheErr);
