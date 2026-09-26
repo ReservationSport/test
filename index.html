@@ -14658,7 +14658,7 @@ window.closeOneNoteSettingsModal = function() {
 };
 
 
-// Lädt alle OneNote-Pfade für den aktuellen User aus der master_db (Splittet alternierende Pfade mit " / " auf)
+// Lädt alle OneNote-Pfade für den aktuellen User aus der master_db
 async function loadOneNotePathsFromSupabase() {
     let rawUser = localStorage.getItem('userKuerzel') || window.userKuerzel || "";
     if (typeof rawUser === 'object' && rawUser !== null) {
@@ -14698,15 +14698,28 @@ async function loadOneNotePathsFromSupabase() {
 
                     if (kuerzelString.includes('/')) {
                         let einzellKlassen = kuerzelString.split('/').map(k => k.trim());
-                        
-                        // Exakter Split am Leerzeichen-Slash-Leerzeichen " / "
-                        let pteile = rawPath.includes(' / ') ? rawPath.split(' / ') : [rawPath, ''];
+                        let cleanPath = rawPath;
+
+                        let p1 = '';
+                        let p2 = '';
+
+                        if (cleanPath.includes(' / ')) {
+                            let sp = cleanPath.split(' / ');
+                            p1 = (sp[0] || '').trim();
+                            p2 = (sp[1] || '').trim();
+                        } else if (cleanPath.startsWith('/')) {
+                            p2 = cleanPath.replace(/^\/+/, '').trim();
+                        } else if (cleanPath.endsWith('/')) {
+                            p1 = cleanPath.replace(/\/+$/, '').trim();
+                        } else {
+                            p1 = cleanPath;
+                        }
 
                         if (einzellKlassen[0]) {
-                            window.oneNotePaths[einzellKlassen[0]] = (pteile[0] || '').trim();
+                            window.oneNotePaths[einzellKlassen[0]] = p1;
                         }
                         if (einzellKlassen[1]) {
-                            window.oneNotePaths[einzellKlassen[1]] = (pteile[1] || '').trim();
+                            window.oneNotePaths[einzellKlassen[1]] = p2;
                         }
                     } else {
                         window.oneNotePaths[kuerzelString] = rawPath;
@@ -14766,15 +14779,30 @@ async function renderOneNoteSettings() {
 
                     if (kuerzelString.includes('/')) {
                         let einzellKlassen = kuerzelString.split('/').map(k => k.trim());
-                        let pteile = rawPath.includes(' / ') ? rawPath.split(' / ') : [rawPath, ''];
+                        let cleanPath = rawPath;
+
+                        let p1 = '';
+                        let p2 = '';
+
+                        if (cleanPath.includes(' / ')) {
+                            let sp = cleanPath.split(' / ');
+                            p1 = (sp[0] || '').trim();
+                            p2 = (sp[1] || '').trim();
+                        } else if (cleanPath.startsWith('/')) {
+                            p2 = cleanPath.replace(/^\/+/, '').trim();
+                        } else if (cleanPath.endsWith('/')) {
+                            p1 = cleanPath.replace(/\/+$/, '').trim();
+                        } else {
+                            p1 = cleanPath;
+                        }
 
                         if (einzellKlassen[0]) {
                             classesSet.add(einzellKlassen[0]);
-                            pathMap[einzellKlassen[0]] = (pteile[0] || '').trim();
+                            pathMap[einzellKlassen[0]] = p1;
                         }
                         if (einzellKlassen[1]) {
                             classesSet.add(einzellKlassen[1]);
-                            pathMap[einzellKlassen[1]] = (pteile[1] || '').trim();
+                            pathMap[einzellKlassen[1]] = p2;
                         }
                     } else {
                         classesSet.add(kuerzelString);
@@ -14811,7 +14839,7 @@ async function renderOneNoteSettings() {
 
         container.innerHTML = html;
 
-        // Speicher-Logik mit exakter Trennung am " / " für alternierende Klassen
+        // Speicher-Logik mit exakter Formatierung (link1 / , / link2, link1 / link2)
         document.getElementById('save-onenote-paths-btn')?.addEventListener('click', async () => {
             const inputs = container.querySelectorAll('.onenote-input-field');
             let success = true;
@@ -14839,25 +14867,50 @@ async function renderOneNoteSettings() {
                         let finalPathToSave = newPathVal;
 
                         if (kStr.includes('/')) {
-                            let parts = kStr.split('/').map(k => k.trim());
+                            let parts = kStr.split('/').map(k => k.trim().toLowerCase());
                             
-                            // Bestehenden DB-Pfad sicher am " / " trennen
-                            let existingParts = existingDbPath.includes(' / ') 
-                                ? existingDbPath.split(' / ') 
-                                : [existingDbPath, ''];
-                            
-                            let part1 = (existingParts[0] || '').trim();
-                            let part2 = (existingParts[1] || '').trim();
+                            let targetIndex = -1;
+                            for (let i = 0; i < parts.length; i++) {
+                                if (parts[i] === zielKlasse.toLowerCase()) {
+                                    targetIndex = i;
+                                    break;
+                                }
+                            }
 
-                            // Gezieltes Ersetzen je nachdem, welche Klasse im Modal gespeichert wird
-                            if (parts[0].toLowerCase() === zielKlasse.toLowerCase()) {
+                            // Bestehenden Pfad analysieren
+                            let cleanPath = existingDbPath;
+                            let part1 = '';
+                            let part2 = '';
+
+                            if (cleanPath.includes(' / ')) {
+                                let sp = cleanPath.split(' / ');
+                                part1 = (sp[0] || '').trim();
+                                part2 = (sp[1] || '').trim();
+                            } else if (cleanPath.startsWith('/')) {
+                                part2 = cleanPath.replace(/^\/+/, '').trim();
+                            } else if (cleanPath.endsWith('/')) {
+                                part1 = cleanPath.replace(/\/+$/, '').trim();
+                            } else if (cleanPath !== '') {
+                                part1 = cleanPath;
+                            }
+
+                            // Wert für die jeweilige Klasse aktualisieren
+                            if (targetIndex === 0) {
                                 part1 = newPathVal;
-                            } else if (parts[1].toLowerCase() === zielKlasse.toLowerCase()) {
+                            } else if (targetIndex === 1) {
                                 part2 = newPathVal;
                             }
 
-                            // Wieder im Format "Link1 / Link2" zusammenbauen
-                            finalPathToSave = `${part1} / ${part2}`;
+                            // Spezifisches Format zusammenbauen
+                            if (part1 && part2) {
+                                finalPathToSave = `${part1} / ${part2}`;
+                            } else if (part1 && !part2) {
+                                finalPathToSave = `${part1} /`;
+                            } else if (!part1 && part2) {
+                                finalPathToSave = `/ ${part2}`;
+                            } else {
+                                finalPathToSave = '';
+                            }
                         }
 
                         // Update in der Datenbank über die ID
