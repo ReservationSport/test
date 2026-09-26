@@ -4235,7 +4235,7 @@ input.stellvertretung-input {
                 </div>
                 <!-- 🆕 NEU: OneNote-Einstellungen aufrufen -->
                 <div class="menu-item" onclick="openOneNoteSettingsModal()">
-                    <span class="material-symbols-outlined">menu_book</span> OneNote-Pfade
+                    <span class="material-symbols-outlined">menu_book</span> OneNote-Links
                 </div>
             </div>
         </div>
@@ -14881,8 +14881,8 @@ async function renderOneNoteSettings() {
 
         // HTML mit direktem Inline-Styling für den Scroll-Container (verhindert Überlaufen)
         let html = `
-            <h3 style="margin-top: 0; margin-bottom: 5px; color: white; font-size: 1.1em;">OneNote-Pfade pro Klasse</h3>
-            <p style="font-size: 0.8em; color: #aaa; margin-bottom: 10px;">Trage hier den Link für deine Klassen ein. Alternierende Klassen werden getrennt gepflegt.</p>
+            <h3 style="margin-top: 0; margin-bottom: 5px; color: white; font-size: 1.1em;">OneNote-Links</h3>
+            <p style="font-size: 0.8em; color: #aaa; margin-bottom: 10px;">Trage hier die gewünschten OneNote-Links für deine Klassen ein.</p>
             <div class="onenote-path-list" style="flex: 1; overflow-y: auto; max-height: 52vh; margin: 10px 0; padding-right: 5px; box-sizing: border-box;">
         `;
 
@@ -14903,7 +14903,7 @@ async function renderOneNoteSettings() {
                 `;
             });
             html += `</div>
-            <button id="save-onenote-paths-btn" style="background: #e67e22; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px;">Pfade speichern</button>`;
+            <button id="save-onenote-paths-btn" style="background: #e67e22; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px;">Links speichern</button>`;
         }
 
         container.innerHTML = html;
