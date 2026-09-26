@@ -4030,6 +4030,53 @@ input.stellvertretung-input {
     background: #ea580c;
 }
     
+
+
+/* ============================================================
+    27. OneNote Links einfügen
+    ============================================================ */
+    
+
+    #onenote-settings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: none; 
+    justify-content: center;
+    align-items: center;
+    z-index: 2200;
+}
+
+#onenote-settings-modal .modal-content {
+    background: #1e1e1e;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #444;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    color: white;
+    width: 95%;
+    max-width: 600px;
+    position: fixed;
+    top: 5vh;
+    bottom: 5vh;
+    display: flex;
+    flex-direction: column;
+}
+
+@media screen and (max-height: 500px) {
+    #onenote-settings-modal .modal-content {
+        padding: 10px;
+        top: 2.5vh;
+        bottom: 2.5vh;
+    }
+}
+
+
+
+
     
     
 </style>
@@ -14634,7 +14681,7 @@ async function speichereNeueStellvertretung() {
 
     
 /* ==================================================================== */
-/* 11.12 OneNote-Pfad eintragen*/
+/* 11.12 OneNote-Pfad eintragen (Angepasst an das Dark-Design) */
 /* ==================================================================== */
 
 window.openOneNoteSettingsModal = function() {
@@ -14750,11 +14797,11 @@ async function renderOneNoteSettings() {
     }
 
     if (!aktuellerUser) {
-        container.innerHTML = `<p class="has-text-danger">Bitte zuerst ein Benutzerkürzel angeben.</p>`;
+        container.innerHTML = `<p style="color: #e74c3c;">Bitte zuerst ein Benutzerkürzel angeben.</p>`;
         return;
     }
 
-    container.innerHTML = `<p style="color: #363636;">Lade alle Klassen aus der Datenbank...</p>`;
+    container.innerHTML = `<p style="color: #bbb;">Lade alle Klassen aus der Datenbank...</p>`;
 
     try {
         const { data, error } = await window.supabaseClient
@@ -14764,7 +14811,7 @@ async function renderOneNoteSettings() {
 
         if (error) {
             console.error("Fehler beim Laden der Klassen:", error);
-            container.innerHTML = `<p class="has-text-danger">Fehler beim Laden der Klassen aus der Datenbank.</p>`;
+            container.innerHTML = `<p style="color: #e74c3c;">Fehler beim Laden der Klassen aus der Datenbank.</p>`;
             return;
         }
 
@@ -14815,31 +14862,36 @@ async function renderOneNoteSettings() {
         window.oneNotePaths = pathMap;
 
         let html = `
-            <h4 class="title is-5" style="color: #363636;">OneNote-Pfade pro Klasse</h4>
-            <p class="subtitle is-6" style="color: #4a4a4a;">Trage hier den Link für deine Klassen ein. Alternierende Klassen werden getrennt gepflegt.</p>
-            <div class="onenote-path-list" style="max-height: 350px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;">
+            <h3 style="margin-top: 0; margin-bottom: 5px; color: white; font-size: 1.1em;">OneNote-Pfade pro Klasse</h3>
+            <p style="font-size: 0.8em; color: #888; margin-bottom: 10px;">Trage hier den Link für deine Klassen ein. Alternierende Klassen werden getrennt gepflegt.</p>
+            <div class="onenote-path-list" style="margin: 10px 0; flex: 1; overflow-y: auto; padding-right: 5px; min-height: 50px;">
         `;
 
         if (myClasses.length === 0) {
-            html += `<p style="color: #363636;">Keine Klassen für dein Kürzel (${aktuellerUser}) in der master_db gefunden.</p>`;
+            html += `<p style="color: #bbb;">Keine Klassen für dein Kürzel (${aktuellerUser}) in der master_db gefunden.</p>`;
         } else {
             myClasses.forEach(klasse => {
                 const currentPath = pathMap[klasse] || '';
                 html += `
-                    <div class="field is-horizontal" style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
-                        <label class="label" style="min-width: 90px; margin-bottom: 0; color: #363636 !important; font-weight: bold;">${klasse}</label>
-                        <div class="control" style="flex-grow: 1;">
-                            <input class="input onenote-input-field" type="text" data-klasse="${klasse}" value="${currentPath}" placeholder="https://... oder onenote:...">
-                        </div>
+                    <div style="background: #2c2c2c; border-left: 4px solid #e67e22; padding: 10px 12px; margin-bottom: 8px; border-radius: 4px; display: flex; flex-direction: column; gap: 5px;">
+                        <span style="font-weight: bold; font-size: 0.9em; color: white;">${klasse}</span>
+                        <input class="onenote-input-field" type="text" data-klasse="${klasse}" value="${currentPath}" placeholder="https://... oder onenote:..." style="width: 100%; padding: 8px; border: 1px solid #444; border-radius: 4px; background: #1e1e1e; color: white; box-sizing: border-box; font-size: 0.85em;">
                     </div>
                 `;
             });
-            html += `</div><button class="button is-primary is-small" id="save-onenote-paths-btn">Pfade speichern</button>`;
+            html += `</div>
+            <button id="save-onenote-paths-btn" style="background: #e67e22; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px;">Pfade speichern</button>`;
         }
 
         container.innerHTML = html;
 
-        // Speicher-Logik mit exakter Formatierung (link1 / , / link2, link1 / link2)
+        // CSS-Schatten / Focus-Effekt für die Inputs dynamisch ansprechen
+        container.querySelectorAll('.onenote-input-field').forEach(inp => {
+            inp.addEventListener('focus', () => inp.style.borderColor = '#e67e22');
+            inp.addEventListener('blur', () => inp.style.borderColor = '#444');
+        });
+
+        // Speicher-Logik
         document.getElementById('save-onenote-paths-btn')?.addEventListener('click', async () => {
             const inputs = container.querySelectorAll('.onenote-input-field');
             let success = true;
@@ -14852,7 +14904,7 @@ async function renderOneNoteSettings() {
                     .from('master_db')
                     .select('id, klasse, onenote_path')
                     .ilike('lehrer', `%${aktuellerUser}%`)
-                    .ilike('klasse', `%${zielKlasse}%`);
+                    .ilike('klasse`, `%${zielKlasse}%`);
 
                 if (matchError) {
                     console.error(`Fehler beim Suchen der Klasse ${zielKlasse}:`, matchError);
@@ -14877,7 +14929,6 @@ async function renderOneNoteSettings() {
                                 }
                             }
 
-                            // Bestehenden Pfad analysieren
                             let cleanPath = existingDbPath;
                             let part1 = '';
                             let part2 = '';
@@ -14894,14 +14945,12 @@ async function renderOneNoteSettings() {
                                 part1 = cleanPath;
                             }
 
-                            // Wert für die jeweilige Klasse aktualisieren
                             if (targetIndex === 0) {
                                 part1 = newPathVal;
                             } else if (targetIndex === 1) {
                                 part2 = newPathVal;
                             }
 
-                            // Spezifisches Format zusammenbauen
                             if (part1 && part2) {
                                 finalPathToSave = `${part1} / ${part2}`;
                             } else if (part1 && !part2) {
@@ -14913,7 +14962,6 @@ async function renderOneNoteSettings() {
                             }
                         }
 
-                        // Update in der Datenbank über die ID
                         const { error: updateError } = await window.supabaseClient
                             .from('master_db')
                             .update({ onenote_path: finalPathToSave })
@@ -14937,7 +14985,7 @@ async function renderOneNoteSettings() {
 
     } catch (e) {
         console.error("Netzwerkfehler:", e);
-        container.innerHTML = `<p class="has-text-danger">Verbindungsfehler beim Laden.</p>`;
+        container.innerHTML = `<p style="color: #e74c3c;">Verbindungsfehler beim Laden.</p>`;
     }
 }
     
