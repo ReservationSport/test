@@ -4049,28 +4049,28 @@ input.stellvertretung-input {
 }
 
 #onenote-settings-modal .modal-content {
-    background: #1e1e1e;
+    background: #1e1e1e !important;
     padding: 15px;
     border-radius: 8px;
     border: 1px solid #444;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    color: white;
+    color: white !important;
     width: 95%;
     max-width: 600px;
     position: fixed;
     top: 5vh;
     bottom: 5vh;
-    max-height: 90vh; /* Verhindert Überlaufen nach oben/unten */
+    max-height: 90vh;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
 }
 
-/* Der Scroll-Container für die Klassenliste */
+/* Scrollbarer Container für die Klassen-Einträge */
 #onenote-settings-modal .onenote-path-list {
     margin: 10px 0;
-    flex: 1;              /* Nimmt den freien Platz zwischen Titel und Button ein */
-    overflow-y: auto;     /* Aktiviert das Scrollen nur hier */
+    flex: 1;
+    overflow-y: auto !important;
     padding-right: 5px;
     min-height: 50px;
 }
@@ -4086,7 +4086,6 @@ input.stellvertretung-input {
         margin: 5px 0;
     }
 }
-
 
     
     
@@ -14692,13 +14691,21 @@ async function speichereNeueStellvertretung() {
 
     
 /* ==================================================================== */
-/* 11.12 OneNote-Pfad eintragen (Dark-Design & Fehlerbereinigt) */
+/* 11.12 OneNote-Pfad eintragen (Dark-Design & Scroll-Fix) */
 /* ==================================================================== */
 
 window.openOneNoteSettingsModal = function() {
     const modal = document.getElementById('onenote-settings-modal');
     if (modal) {
         modal.style.display = 'flex'; // Sichtbar machen
+        
+        // Zwingt das Modal-Inhaltsfenster direkt in den Dark Mode (gegen CSS-Caches)
+        const content = modal.querySelector('.modal-content');
+        if (content) {
+            content.style.background = '#1e1e1e';
+            content.style.color = 'white';
+            content.style.border = '1px solid #444';
+        }
     } else {
         console.error("Fehler: #onenote-settings-modal nicht gefunden!");
     }
@@ -14872,11 +14879,11 @@ async function renderOneNoteSettings() {
         const myClasses = Array.from(classesSet).sort();
         window.oneNotePaths = pathMap;
 
-        // HTML im exakten Dark-Design mit korrekter Scroll-Klasse (.onenote-path-list)
+        // HTML mit direktem Inline-Styling für den Scroll-Container (verhindert Überlaufen)
         let html = `
             <h3 style="margin-top: 0; margin-bottom: 5px; color: white; font-size: 1.1em;">OneNote-Pfade pro Klasse</h3>
             <p style="font-size: 0.8em; color: #aaa; margin-bottom: 10px;">Trage hier den Link für deine Klassen ein. Alternierende Klassen werden getrennt gepflegt.</p>
-            <div class="onenote-path-list">
+            <div class="onenote-path-list" style="flex: 1; overflow-y: auto; max-height: 52vh; margin: 10px 0; padding-right: 5px; box-sizing: border-box;">
         `;
 
         if (myClasses.length === 0) {
@@ -14906,7 +14913,7 @@ async function renderOneNoteSettings() {
             inp.addEventListener('blur', () => inp.style.borderColor = '#444');
         });
 
-        // Speicher-Logik wie gehabt
+        // Speicher-Logik
         document.getElementById('save-onenote-paths-btn')?.addEventListener('click', async () => {
             const inputs = container.querySelectorAll('.onenote-input-field');
             let success = true;
