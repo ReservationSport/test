@@ -14661,15 +14661,15 @@ window.closeOneNoteSettingsModal = function() {
 
 // Lädt alle OneNote-Pfade für den aktuellen User aus der master_db
 async function loadOneNotePathsFromSupabase() {
-    let rawUser = window.userKuerzel || localStorage.getItem('userKuerzel');
-    if (rawUser && typeof rawUser === 'object') {
-        rawUser = rawUser.value || rawUser.getAttribute?.('value') || "";
-    }
-    let aktuellerUser = String(rawUser || "").trim().toLowerCase();
+    // 🛡️ Direkt als Erstes hart aus dem localStorage oder der globalen Variable holen!
+    let aktuellerUser = (window.userKuerzel || localStorage.getItem('userKuerzel') || "").trim().toLowerCase();
 
-    if (!aktuellerUser || aktuellerUser.includes('input')) {
+    // Falls immer noch ein HTML-Input Objekt abgefangen wird
+    if (aktuellerUser.includes('input') || aktuellerUser === '') {
         const inputEl = document.getElementById('userKuerzel');
-        if (inputEl) aktuellerUser = inputEl.value.trim().toLowerCase();
+        if (inputEl && inputEl.value) {
+            aktuellerUser = inputEl.value.trim().toLowerCase();
+        }
     }
 
     console.log("🔍 OneNote-Loader: Versuche Pfade zu laden für Kürzel:", aktuellerUser);
