@@ -14674,11 +14674,11 @@ async function loadOneNotePathsFromSupabase() {
     if (!aktuellerUser) return;
 
     try {
-        // Korrekt mit .ilike('lehrer', ...) abgefragt wie im Modal
+        // 🔥 WICHTIG: Mit %-Zeichen, damit es auch in kombinierten Lehrerfeldern (z.B. "mueller, schmidt") gefunden wird!
         const { data, error } = await window.supabaseClient
             .from('master_db')
             .select('klasse, onenote_path')
-            .ilike('lehrer', aktuellerUser);
+            .ilike('lehrer', `%${aktuellerUser}%`);
 
         if (error) {
             console.error("Fehler beim Laden der OneNote-Pfade:", error);
@@ -14686,7 +14686,6 @@ async function loadOneNotePathsFromSupabase() {
             return;
         }
 
-        // In ein handliches Objekt umwandeln: { "MA26A": "pfad...", "SP25B": "pfad..." }
         window.oneNotePaths = {};
         if (data) {
             data.forEach(row => {
@@ -14695,7 +14694,7 @@ async function loadOneNotePathsFromSupabase() {
                 }
             });
         }
-        console.log("OneNote-Pfade beim Start erfolgreich geladen:", window.oneNotePaths);
+        console.log("OneNote-Pfade erfolgreich geladen:", window.oneNotePaths);
     } catch (e) {
         console.error("Netzwerkfehler beim Laden der OneNote-Pfade:", e);
         window.oneNotePaths = {};
