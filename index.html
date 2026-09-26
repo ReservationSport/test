@@ -4034,9 +4034,8 @@ input.stellvertretung-input {
 /* ============================================================
     27. OneNote Links einfügen
     ============================================================ */
-    
 
-    #onenote-settings-modal {
+#onenote-settings-modal {
     position: fixed;
     top: 0;
     left: 0;
@@ -4061,19 +4060,32 @@ input.stellvertretung-input {
     position: fixed;
     top: 5vh;
     bottom: 5vh;
+    max-height: 90vh; /* Verhindert Überlaufen nach oben/unten */
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
 }
 
+/* Der Scroll-Container für die Klassenliste */
+#onenote-settings-modal .onenote-path-list {
+    margin: 10px 0;
+    flex: 1;              /* Nimmt den freien Platz zwischen Titel und Button ein */
+    overflow-y: auto;     /* Aktiviert das Scrollen nur hier */
+    padding-right: 5px;
+    min-height: 50px;
+}
+
+/* Landscape-Optimierung für kleine Bildschirme */
 @media screen and (max-height: 500px) {
     #onenote-settings-modal .modal-content {
         padding: 10px;
         top: 2.5vh;
         bottom: 2.5vh;
     }
+    #onenote-settings-modal .onenote-path-list {
+        margin: 5px 0;
+    }
 }
-
-
 
 
     
@@ -14860,10 +14872,11 @@ async function renderOneNoteSettings() {
         const myClasses = Array.from(classesSet).sort();
         window.oneNotePaths = pathMap;
 
+        // HTML im exakten Dark-Design mit korrekter Scroll-Klasse (.onenote-path-list)
         let html = `
             <h3 style="margin-top: 0; margin-bottom: 5px; color: white; font-size: 1.1em;">OneNote-Pfade pro Klasse</h3>
-            <p style="font-size: 0.8em; color: #888; margin-bottom: 10px;">Trage hier den Link für deine Klassen ein. Alternierende Klassen werden getrennt gepflegt.</p>
-            <div class="onenote-path-list" style="margin: 10px 0; flex: 1; overflow-y: auto; padding-right: 5px; min-height: 50px;">
+            <p style="font-size: 0.8em; color: #aaa; margin-bottom: 10px;">Trage hier den Link für deine Klassen ein. Alternierende Klassen werden getrennt gepflegt.</p>
+            <div class="onenote-path-list">
         `;
 
         if (myClasses.length === 0) {
@@ -14872,7 +14885,6 @@ async function renderOneNoteSettings() {
             myClasses.forEach(klasse => {
                 const currentPath = pathMap[klasse] || '';
                 
-                // Schutz vor Zeilenumbrüchen und defekten Attributen
                 const safeKlasse = String(klasse).replace(/[\r\n]+/g, '').trim();
                 const safePath = String(currentPath).replace(/[\r\n]+/g, '').replace(/"/g, '&quot;').trim();
 
@@ -14884,18 +14896,17 @@ async function renderOneNoteSettings() {
                 `;
             });
             html += `</div>
-            <button id="save-onenote-paths-btn" style="background: #e67e22; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px;">Pfade speichern</button>`;
+            <button id="save-onenote-paths-btn" style="background: #e67e22; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px;">Pfade speichern</button>`;
         }
 
         container.innerHTML = html;
 
-        // Focus-Effekte für Inputs
         container.querySelectorAll('.onenote-input-field').forEach(inp => {
             inp.addEventListener('focus', () => inp.style.borderColor = '#e67e22');
             inp.addEventListener('blur', () => inp.style.borderColor = '#444');
         });
 
-        // Speicher-Logik mit sauberer Abfrage
+        // Speicher-Logik wie gehabt
         document.getElementById('save-onenote-paths-btn')?.addEventListener('click', async () => {
             const inputs = container.querySelectorAll('.onenote-input-field');
             let success = true;
@@ -14908,7 +14919,7 @@ async function renderOneNoteSettings() {
                     .from('master_db')
                     .select('id, klasse, onenote_path')
                     .ilike('lehrer', `%${aktuellerUser}%`)
-                    .ilike('klasse', `%${zielKlasse}%`); // Syntaxfehler korrigiert!
+                    .ilike('klasse', `%${zielKlasse}%`);
 
                 if (matchError) {
                     console.error(`Fehler beim Suchen der Klasse ${zielKlasse}:`, matchError);
