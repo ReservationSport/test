@@ -4345,10 +4345,11 @@ input.stellvertretung-input {
             <span class="material-symbols-outlined">chat</span>
         </button>
 
-        <!-- Benutzer-Avatar / Kürzel -->
-        <div class="user-avatar-btn" id="header-user-avatar-container" title="Angemeldet" onclick="/* Optional: Profil-Menü öffnen */">
+       <!-- Benutzer-Avatar / Kürzel -->
+        <button class="header-icon-btn" id="header-user-avatar-container" onclick="/* Optional: Profil-Menü öffnen */" title="Angemeldet">
             <span class="material-symbols-outlined">run_circle</span>
-        </div>
+        </button>
+
     </div>
 </div>
 
@@ -17320,9 +17321,10 @@ function updateHeaderUserTooltip() {
         rawUserKuerzel = el ? (el.value || "gast") : "gast";
     }
     
-    // In Kleinbuchstaben umwandeln
+    // In Kleinbuchstaben umwandeln ohne Klammern
     const cleanKuerzel = String(rawUserKuerzel).trim().toLowerCase();
     
+    // Sucht den Button über die ID und setzt das Tooltip-Attribut
     const avatarBtn = document.getElementById('header-user-avatar-container');
     if (avatarBtn) {
         avatarBtn.title = `angemeldet als ${cleanKuerzel}`;
