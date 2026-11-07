@@ -4301,20 +4301,20 @@ input.stellvertretung-input {
         <a href="#" class="app-logo" onclick="goToToday(); return false;" title="Zum heutigen Stundenplan">B3</a>
 
          <!-- Stundenplan (Aktive Hauptansicht) -->
-        <button class="header-nav-link active" onclick="closeAllOverlays()">
+        <button class="header-nav-link" onclick="closeAllOverlays()">
             <span class="material-symbols-outlined">calendar_month</span>
             <span>STUNDENPLAN</span>
         </button>
         
         <!-- Raumplanung als Overlay -->
         <button class="header-nav-link" onclick="openRoomPlanningOverlay()">
-            <span class="material-symbols-outlined">meeting_room</span>
+            <span class="material-symbols-outlined">school</span>
             <span>UNTERRICHT</span>
         </button>
 
         <!-- Personal als Overlay -->
         <button class="header-nav-link" onclick="openPersonalOverlay()">
-            <span class="material-symbols-outlined">person</span>
+            <span class="material-symbols-outlined">groups</span>
             <span>TEAM</span>
         </button>
 
@@ -4335,7 +4335,7 @@ input.stellvertretung-input {
     <div class="header-right">
 
         <!-- News -->
-        <button class="header-icon-btn" onclick="openChat()" title="Chat öffnen">
+        <button class="header-icon-btn" onclick="openChat()" title="Neuigkeiten anzeigen">
             <span class="material-symbols-outlined">news</span>
         </button>
         
