@@ -8202,16 +8202,18 @@ function getDoppellektionPartnerSlot(currentSlot) {
 
 
 
+/**
+ * Der "Postbote": Sendet Daten direkt an Supabase und generiert automatisch News-Einträge
+ */
 window.saveImmediately = async function(payload, options = {}) {
-    console.log("🚀 saveImmediately wurde aufgerufen mit Payload:", payload);
-
+    // 1. Validierung
     if (!supabaseClient) {
-        console.error("❌ ABBRUCH: supabaseClient ist nicht definiert!");
+        console.error("❌ saveImmediately abgebrochen: 'supabaseClient' ist nicht definiert!");
         return { status: "error", msg: "Supabase-Client fehlt" };
     }
 
     if (!payload) {
-        console.error("❌ ABBRUCH: Kein Payload übergeben!");
+        console.error("❌ saveImmediately abgebrochen: Kein Payload übergeben!");
         return { status: "error", msg: "Keine Daten übergeben" };
     }
 
@@ -8219,56 +8221,7 @@ window.saveImmediately = async function(payload, options = {}) {
         const dp = document.getElementById('datePicker');
         const dateVal = payload.datum || (dp ? dp.value : new Date().toISOString().split('T')[0]);
         const slotNum = parseInt(payload.slot, 10);
-        const aktuellesKuerzel = (payload.verfasser || (typeof userKuerzel !== 'undefined' ? userKuerzel : "") || payload.kuerzel || "").toString().trim().toLowerCase();
-
-        console.log(`🔍 Prüfe Live-Status für Datum: ${dateVal}, Slot: ${slotNum}, Mein Kürzel: "${aktuellesKuerzel}"`);
-
-        const gewählteHalle = (payload.halle || "").trim().toLowerCase();
-        
-        if (gewählteHalle !== "" && gewählteHalle !== "ausfall" && gewählteHalle !== "beendet") {
-            // Frischen Stand aus der DB holen
-            const { data: dbEintrag, error: dbError } = await supabaseClient
-                .from('buchungen_db')
-                .select('id, slot, halle, verfasser')
-                .eq('datum', dateVal)
-                .eq('slot', slotNum)
-                .maybeSingle();
-
-            console.log("📥 DB-Antwort beim Live-Check:", { dbEintrag, dbError });
-
-            if (!dbError && dbEintrag) {
-                const dbHalle = (dbEintrag.halle || "").trim().toLowerCase();
-                const dbVerfasser = (dbEintrag.verfasser || "").trim().toLowerCase();
-
-                console.log(`📊 Vergleich -> DB-Halle: "${dbHalle}" | DB-Verfasser: "${dbVerfasser}" | Wunsch-Halle: "${gewählteHalle}"`);
-
-                // 🛑 STRENGER KONFLIKT-CHECK:
-                // Wenn ein fremder User diesen Slot besetzt hat (auch wenn die Halle im DB-Eintrag noch leer war) 
-                // ODER bereits eine andere Halle vergeben ist, schlagen wir Alarm!
-                const istFremderUser = dbVerfasser !== "" && dbVerfasser !== aktuellesKuerzel;
-                const istFremdeHalle = dbHalle !== "" && dbHalle !== "ausfall" && dbHalle !== "beendet";
-
-                if (istFremderUser || istFremdeHalle) {
-                    console.warn(`🛑 KOLLIDIRT! Slot ist bereits durch "${dbVerfasser}" oder Halle "${dbHalle}" belegt.`);
-                    return { 
-                        status: "conflict", 
-                        msg: `Achtung! Kollege (${dbEintrag.verfasser || 'Anderer'}) war schneller und hat diesen Slot/diese Halle soeben belegt!` 
-                    };
-                } else {
-                    console.log("ℹ️ Eintrag in DB gehört zu dir selbst (Update-Fall). Erlaubt.");
-                }
-            } else {
-                console.log("✅ Slot in DB ist komplett frei oder Abfrage leer.");
-            }
-        }
-
-        // Rest des Speicherns...
-        const { data: existingData } = await supabaseClient
-            .from('buchungen_db')
-            .select('id')
-            .eq('datum', dateVal)
-            .eq('slot', slotNum)
-            .maybeSingle();
+        const aktuellesKuerzel = (payload.verfasser || (typeof userKuerzel !== 'undefined' ? userKuerzel : "") || payload.kuerzel || "").toString().trim();
 
         const bookingData = {
             datum: dateVal,
@@ -8282,26 +8235,69 @@ window.saveImmediately = async function(payload, options = {}) {
             verfasser: aktuellesKuerzel
         };
 
+        // 2. Prüfen, ob für dieses Datum & diesen Slot bereits ein Eintrag existiert
+        let query = supabaseClient
+            .from('buchungen_db')
+            .select('id')
+            .eq('datum', dateVal)
+            .eq('slot', slotNum);
+
+        if (options.signal) {
+            query = query.abortSignal(options.signal);
+        }
+
+        const { data: existingData, error: fetchError } = await query.maybeSingle();
+        if (fetchError) throw fetchError;
+
         if (existingData && existingData.id) {
-            console.log("✍️ Führe UPDATE aus für ID:", existingData.id);
-            const { error: updateError } = await supabaseClient
+            // Update, falls Eintrag existiert
+            let updateQuery = supabaseClient
                 .from('buchungen_db')
                 .update(bookingData)
                 .eq('id', existingData.id);
+
+            if (options.signal) {
+                updateQuery = updateQuery.abortSignal(options.signal);
+            }
+
+            const { error: updateError } = await updateQuery;
             if (updateError) throw updateError;
         } else {
-            console.log("➕ Führe INSERT aus...");
-            const { error: insertError } = await supabaseClient
+            // Insert, falls noch kein Eintrag existiert
+            let insertQuery = supabaseClient
                 .from('buchungen_db')
                 .insert([bookingData]);
+
+            if (options.signal) {
+                insertQuery = insertQuery.abortSignal(options.signal);
+            }
+
+            const { error: insertError } = await insertQuery;
             if (insertError) throw insertError;
         }
 
-        console.log("🎯 Speicherbefehl erfolgreich ausgeführt!");
-        return { status: "success", msg: "Erfolgreich gespeichert" };
+        console.log("🎯 Speicherbefehl erfolgreich in Supabase ausgeführt:", payload);
+        
+        // 3. ✨ AUTOMATISCHER NEWS-TRIGGER ✨
+        // Sendet die Aktion direkt an das News-System (mit sauberem 'typ'-Feld)
+        if (typeof window.saveNewsToDBFrontend === 'function') {
+            // Ermittelt den Typ (Priorität hat payload.typ, ansonsten wird bookingData.halle als Typ genutzt)
+            const aktuellerTyp = (payload.typ || bookingData.halle || "").toString().toLowerCase().trim();
+
+            await window.saveNewsToDBFrontend({
+                typ: aktuellerTyp,            // <--- Übergibt nun strikt 'typ' statt 'halle'
+                slot: slotNum,                // Betroffener Slot
+                klasse: bookingData.klasse,   // Betroffene Klasse
+                verfasser: aktuellesKuerzel,  // Korrektes Feld für den Verfasser
+                datum: dateVal                // An welchem Tag?
+            }, window.lastPlanData);          // Übergibt Masterdaten für die Empfänger-Matrix
+        }
+
+        return { status: "success", msg: "Erfolgreich in Supabase gespeichert" };
 
     } catch (e) {
-        console.error("❌ Kritischer Fehler in saveImmediately:", e);
+        if (e.name === 'AbortError') throw e;
+        console.error("❌ Kritischer Fehler beim Supabase-Speichern:", e);
         return { status: "error", msg: e.toString() };
     }
 };
@@ -8310,68 +8306,40 @@ window.saveImmediately = async function(payload, options = {}) {
 
 // Interne Hilfsfunktion, die die Payloads nacheinander an saveImmediately übergibt
 function executePayloads(payloadArray, onCompleteVisuals) {
-    // Verwendung einer normalen for...of Schleife statt .forEach, 
-    // damit das "await" die Aktionen sauber nacheinander (sequenziell) abarbeitet!
-    (async () => {
-        for (const p of payloadArray) {
-            // 1. Box suchen und DOM-Attribut als Sperre setzen
-            const box = document.querySelector(`[data-slot="${p.slot}"]`);
-            if (box) {
-                box.setAttribute('data-sync-status', 'pending');
-            }
-
-            // 2. Visuelles UI-Update sofort triggern
-            if (typeof onCompleteVisuals === "function") {
-                onCompleteVisuals(p); 
-            }
-
-            // 3. Abschicken
-            try {
-                const result = await saveImmediately(p);
-                
-                if (result && result.status === "success") {
-                    if (p.halle === "Ausfall" || (p.halle && p.halle.includes("Outdoor"))) {
-                        if (typeof window.triggerNewsWrapper === "function") {
-                            window.triggerNewsWrapper(p.halle, p.slot, p.klasse);
-                        }
-                    }
-                    
-                    // --- WICHTIG: KEIN Timeout zum Löschen mehr! ---
-                    // Die Sperre bleibt jetzt bestehen, bis syncPlan 
-                    // beim nächsten Takt den Erfolg validiert hat.
-                    
-                } else if (result && result.status === "conflict") {
-                    // 🛑 KOLLISION / DOPPELBELEGUNG ABGEFANGEN
-                    if (box) box.removeAttribute('data-sync-status');
-                    
-                    // 1. Sofort das Auswahl-Fenster/Menü schließen, damit nicht weitergeklickt wird!
-                    if (typeof closeEditor === 'function') {
-                        closeEditor();
-                    }
-                    
-                    // 2. Dem Benutzer die Warnmeldung anzeigen
-                    alert(result.msg);
-                    
-                    // 3. Sofort den aktuellen Plan neu laden, um den realen Zustand zu erzwingen
-                    const dp = document.getElementById('datePicker');
-                    if (typeof changeDayAndLoad === 'function' && dp) {
-                        await changeDayAndLoad(dp.value);
-                    }
-                    
-                    // Bricht die Schleife ab, da bei einem Konflikt (z.B. Doppellektion) 
-                    // der Rest hinfällig ist
-                    break; 
-                } else {
-                    // Falls Server-Fehler: Sperre sofort entfernen
-                    if (box) box.removeAttribute('data-sync-status');
-                }
-            } catch (e) {
-                // Falls Network-Fehler: Sperre sofort entfernen
-                if (box) box.removeAttribute('data-sync-status');
-                console.error("Fehler in executePayloads:", e);
-            }
+    payloadArray.forEach(async p => {
+        // 1. NEU: Box suchen und DOM-Attribut als Sperre setzen
+        const box = document.querySelector(`[data-slot="${p.slot}"]`);
+        if (box) {
+            box.setAttribute('data-sync-status', 'pending');
         }
-    })();
+
+        // 2. Visuelles UI-Update sofort triggern
+        if (typeof onCompleteVisuals === "function") {
+            onCompleteVisuals(p); 
+        }
+
+        // 3. Abschicken
+        try {
+            const result = await saveImmediately(p);
+            if (result && result.status === "success") {
+                if (p.halle === "Ausfall" || (p.halle && p.halle.includes("Outdoor"))) {
+                    if (typeof window.triggerNewsWrapper === "function") {
+                        window.triggerNewsWrapper(p.halle, p.slot, p.klasse);
+                    }
+                }
+                
+                // --- WICHTIG: KEIN Timeout zum Löschen mehr! ---
+                // Die Sperre bleibt jetzt bestehen, bis syncPlan 
+                // beim nächsten Takt den Erfolg validiert hat.
+            } else {
+                // Falls Server-Fehler: Sperre sofort entfernen
+                if (box) box.removeAttribute('data-sync-status');
+            }
+        } catch (e) {
+            // Falls Network-Fehler: Sperre sofort entfernen
+            if (box) box.removeAttribute('data-sync-status');
+        }
+    });
 }
 
 
@@ -8575,7 +8543,7 @@ window.applyHalleSelection = async function(neueHalle, time, slot, klasse, btn, 
                 });
 
                 if (istBereitsVergeben) {
-                    alert(`🛑 Kollision! Diese Halle (oder ein Teil davon) wurde soeben von Kollege (${belegtDurch}) in diesem Block reserviert.`);
+                    alert(`🛑 Kollision! Diese Halle (oder ein Teil davon) wurde soeben von ${belegtDurch} reserviert.`);
                     
                     // Menü sofort schließen und echten Stand neu laden
                     if (typeof closeEditor === 'function') closeEditor();
