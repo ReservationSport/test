@@ -4350,9 +4350,9 @@ input.stellvertretung-input {
             <span class="material-symbols-outlined">refresh</span>
         </button>
 
-        <!-- Benutzer-Initialen -->
-        <div class="user-avatar-btn" title="Angemeldet">
-            <span id="header-user-initial">B</span>
+        <!-- Benutzer-Avatar / Kürzel -->
+        <div class="user-avatar-btn" id="header-user-avatar-container" title="Angemeldet" onclick="/* Optional: Profil-Menü öffnen */">
+            <span class="material-symbols-outlined" style="font-size: 20px; color: #e67e22;">run_circle</span>
         </div>
     </div>
 </div>
@@ -17314,7 +17314,25 @@ function openRoomPlanningOverlay() {
 }
 
     
+function updateHeaderUserTooltip() {
+    let rawUserKuerzel = "";
+    if (typeof userKuerzel === 'string' && userKuerzel.trim() !== "") {
+        rawUserKuerzel = userKuerzel;
+    } else if (typeof window.userKuerzel === 'string' && window.userKuerzel.trim() !== "") {
+        rawUserKuerzel = window.userKuerzel;
+    } else {
+        const el = document.getElementById('userKuerzel');
+        rawUserKuerzel = el ? (el.value || "Gast") : "Gast";
+    }
+    
+    const avatarBtn = document.getElementById('header-user-avatar-container');
+    if (avatarBtn) {
+        avatarBtn.title = `Angemeldet als (${String(rawUserKuerzel).toUpperCase()})`;
+    }
+}
 
+// Einmal beim Start aufrufen (oder dort, wo das Kürzel geladen/geändert wird)
+window.addEventListener('DOMContentLoaded', updateHeaderUserTooltip);
 
     
     
