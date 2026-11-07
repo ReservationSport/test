@@ -4300,44 +4300,45 @@ input.stellvertretung-input {
         <!-- Logo springt z.B. immer zum heutigen Tag / Standard-Ansicht des Stundenplans -->
         <a href="#" class="app-logo" onclick="goToToday(); return false;" title="Zum heutigen Stundenplan">B3</a>
 
-        <!-- Übersicht / Dashboard als Overlay -->
-        <button class="header-nav-link" onclick="openOverviewOverlay()">
-            <span class="material-symbols-outlined">home</span>
-            <span>Übersicht</span>
-        </button>
-        
-        <!-- Stundenplan (Aktive Hauptansicht) -->
+         <!-- Stundenplan (Aktive Hauptansicht) -->
         <button class="header-nav-link active" onclick="closeAllOverlays()">
             <span class="material-symbols-outlined">calendar_month</span>
-            <span>Stundenpläne</span>
+            <span>STUNDENPLAN</span>
         </button>
-
+        
         <!-- Raumplanung als Overlay -->
         <button class="header-nav-link" onclick="openRoomPlanningOverlay()">
             <span class="material-symbols-outlined">meeting_room</span>
-            <span>Raumplanung</span>
+            <span>UNTERRICHT</span>
         </button>
 
         <!-- Personal als Overlay -->
         <button class="header-nav-link" onclick="openPersonalOverlay()">
             <span class="material-symbols-outlined">person</span>
-            <span>Personal</span>
+            <span>TEAM</span>
         </button>
 
         <!-- Links als Overlay -->
         <button class="header-nav-link" onclick="openLinksOverlay()">
             <span class="material-symbols-outlined">link</span>
-            <span>Links</span>
+            <span>INFRASTRUKTUR</span>
+        </button>
+        
+        <!-- Links als Overlay -->
+        <button class="header-nav-link" onclick="openLinksOverlay()">
+            <span class="material-symbols-outlined">link</span>
+            <span>LINKS</span>
         </button>
     </div>
 
     <!-- Rechts: Profil, Chat & Sync -->
     <div class="header-right">
-        <!-- Benutzer-Initialen -->
-        <div class="user-avatar-btn" title="Angemeldet">
-            <span id="header-user-initial">B</span>
-        </div>
 
+        <!-- News -->
+        <button class="header-icon-btn" onclick="openChat()" title="Chat öffnen">
+            <span class="material-symbols-outlined">news</span>
+        </button>
+        
         <!-- Chat Schnellzugriff -->
         <button class="header-icon-btn" onclick="openChat()" title="Chat öffnen">
             <span class="material-symbols-outlined">chat</span>
@@ -4347,6 +4348,11 @@ input.stellvertretung-input {
         <button class="header-icon-btn" onclick="changeDayAndLoad(document.getElementById('datePicker').value, 'refresh')" title="Aktualisieren">
             <span class="material-symbols-outlined">refresh</span>
         </button>
+
+        <!-- Benutzer-Initialen -->
+        <div class="user-avatar-btn" title="Angemeldet">
+            <span id="header-user-initial">B</span>
+        </div>
     </div>
 </div>
 
