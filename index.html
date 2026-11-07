@@ -4345,11 +4345,6 @@ input.stellvertretung-input {
             <span class="material-symbols-outlined">chat</span>
         </button>
 
-        <!-- Aktualisieren / Refresh -->
-        <button class="header-icon-btn" onclick="changeDayAndLoad(document.getElementById('datePicker').value, 'refresh')" title="Aktualisieren">
-            <span class="material-symbols-outlined">refresh</span>
-        </button>
-
         <!-- Benutzer-Avatar / Kürzel -->
         <div class="user-avatar-btn" id="header-user-avatar-container" title="Angemeldet" onclick="/* Optional: Profil-Menü öffnen */">
             <span class="material-symbols-outlined" style="font-size: 20px; color: #e67e22;">run_circle</span>
@@ -17322,16 +17317,19 @@ function updateHeaderUserTooltip() {
         rawUserKuerzel = window.userKuerzel;
     } else {
         const el = document.getElementById('userKuerzel');
-        rawUserKuerzel = el ? (el.value || "Gast") : "Gast";
+        rawUserKuerzel = el ? (el.value || "gast") : "gast";
     }
+    
+    // In Kleinbuchstaben umwandeln
+    const cleanKuerzel = String(rawUserKuerzel).trim().toLowerCase();
     
     const avatarBtn = document.getElementById('header-user-avatar-container');
     if (avatarBtn) {
-        avatarBtn.title = `Angemeldet als (${String(rawUserKuerzel).toUpperCase()})`;
+        avatarBtn.title = `angemeldet als ${cleanKuerzel}`;
     }
 }
 
-// Einmal beim Start aufrufen (oder dort, wo das Kürzel geladen/geändert wird)
+// Beim Laden der Seite initialisieren
 window.addEventListener('DOMContentLoaded', updateHeaderUserTooltip);
 
     
