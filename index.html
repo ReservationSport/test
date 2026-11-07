@@ -4118,7 +4118,7 @@ input.stellvertretung-input {
     justify-content: center;
     background: #1a1a1a;
     border: 1px solid #333;
-    border-radius: 6px;
+    border-radius: 8px;
     width: 36px;
     height: 36px;
     font-weight: bold;
@@ -4126,6 +4126,12 @@ input.stellvertretung-input {
     font-size: 16px;
     text-decoration: none;
     letter-spacing: -0.5px;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+.app-logo:hover {
+    background: #2d2d2d;
+    border-color: #e67e22;
 }
 
 /* Haupt-Navigationslinks (Übersicht, Stundenpläne, etc.) */
@@ -4143,6 +4149,8 @@ input.stellvertretung-input {
     cursor: pointer;
     transition: all 0.2s ease;
     text-decoration: none;
+    height: 36px;
+    box-sizing: border-box;
 }
 
 .header-nav-link .material-symbols-outlined {
@@ -4180,14 +4188,11 @@ input.stellvertretung-input {
     height: 36px;
     background: #1a1a1a;
     border: 1px solid #333;
-    border-radius: 50%; /* Rund wie im Bild */
+    border-radius: 8px; /* Harmoniert perfekt mit den übrigen Buttons */
     color: #e67e22;
     cursor: pointer;
+    box-sizing: border-box;
     transition: all 0.2s ease;
-}
-
-.header-icon-btn.square-variant {
-    border-radius: 8px; /* Falls eckige Icon-Buttons gewünscht sind */
 }
 
 .header-icon-btn:hover {
@@ -4203,11 +4208,11 @@ input.stellvertretung-input {
 
 /* Benutzer-Initialen-Button */
 .user-avatar-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #333;
-    border: 1px solid #444;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #1a1a1a;
+    border: 1px solid #333;
     color: #eee;
     font-weight: 600;
     font-size: 13px;
@@ -4215,9 +4220,11 @@ input.stellvertretung-input {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: border-color 0.2s;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
 }
 .user-avatar-btn:hover {
+    background: #2d2d2d;
     border-color: #e67e22;
 }
 
@@ -4285,36 +4292,40 @@ input.stellvertretung-input {
 
 
 <!-- ============================================================
-     NEUE KOPFZEILE (OBERHALB DER DATUMS-NAVIGATION)
+     ANGEPASSTE KOPFZEILE (ALS OVERLAY-TRIGGER)
      ============================================================ -->
 <div class="app-header">
     <!-- Links: Logo & Hauptmenü-Links -->
     <div class="header-left">
-        <!-- Logo ganz links oben (Beispiel mit 'B3' wie im Bild) -->
-        <a href="#" class="app-logo" title="Startseite">B3</a>
+        <!-- Logo springt z.B. immer zum heutigen Tag / Standard-Ansicht des Stundenplans -->
+        <a href="#" class="app-logo" onclick="goToToday(); return false;" title="Zum heutigen Stundenplan">B3</a>
 
-        <!-- Navigationselemente -->
-        <button class="header-nav-link" onclick="switchMainView('uebersicht')">
+        <!-- Übersicht / Dashboard als Overlay -->
+        <button class="header-nav-link" onclick="openOverviewOverlay()">
             <span class="material-symbols-outlined">home</span>
             <span>Übersicht</span>
         </button>
         
-        <button class="header-nav-link active" onclick="switchMainView('stundenplaene')">
+        <!-- Stundenplan (Aktive Hauptansicht) -->
+        <button class="header-nav-link active" onclick="closeAllOverlays()">
             <span class="material-symbols-outlined">calendar_month</span>
             <span>Stundenpläne</span>
         </button>
 
-        <button class="header-nav-link" onclick="switchMainView('raumplanung')">
+        <!-- Raumplanung als Overlay -->
+        <button class="header-nav-link" onclick="openRoomPlanningOverlay()">
             <span class="material-symbols-outlined">meeting_room</span>
             <span>Raumplanung</span>
         </button>
 
-        <button class="header-nav-link" onclick="switchMainView('personal')">
+        <!-- Personal als Overlay -->
+        <button class="header-nav-link" onclick="openPersonalOverlay()">
             <span class="material-symbols-outlined">person</span>
             <span>Personal</span>
         </button>
 
-        <button class="header-nav-link" onclick="switchMainView('links')">
+        <!-- Links als Overlay -->
+        <button class="header-nav-link" onclick="openLinksOverlay()">
             <span class="material-symbols-outlined">link</span>
             <span>Links</span>
         </button>
@@ -4322,8 +4333,8 @@ input.stellvertretung-input {
 
     <!-- Rechts: Profil, Chat & Sync -->
     <div class="header-right">
-        <!-- Benutzer-Initialen (z.B. angemeldetes Kürzel) -->
-        <div class="user-avatar-btn" title="Angemeldet als User">
+        <!-- Benutzer-Initialen -->
+        <div class="user-avatar-btn" title="Angemeldet">
             <span id="header-user-initial">B</span>
         </div>
 
@@ -4338,7 +4349,6 @@ input.stellvertretung-input {
         </button>
     </div>
 </div>
-
 
     
     
@@ -17238,13 +17248,65 @@ document.addEventListener('click', (e) => {
 
 
 
+
+    
+
+
     
     
 /* ============================================================
     ALTE DATEN LÖSCHEN... aus news usw.   muss direkt in supabase rein...
     ============================================================ */
+
+
+
     
 
+/* ============================================================
+    KOPFZEILE
+    ============================================================ */
+
+
+// Aktiven Tab in der Kopfzeile umschalten
+function updateHeaderActiveState(activeButtonElement) {
+    document.querySelectorAll('.header-nav-link').forEach(btn => btn.classList.remove('active'));
+    if (activeButtonElement) {
+        activeButtonElement.classList.add('active');
+    }
+}
+
+// Alle Overlays schließen und zum Stundenplan zurückkehren
+function closeAllOverlays() {
+    document.querySelectorAll('.app-overlay-modal').forEach(modal => {
+        modal.classList.remove('active');
+    });
+    // "Stundenpläne" als aktiv markieren
+    const stundenplanBtn = document.querySelector('.header-nav-link:nth-child(3)'); // Entspricht dem Stundenplan-Button
+    updateHeaderActiveState(stundenplanBtn);
+}
+
+// Beispiel für das Öffnen eines Overlays (z.B. Raumplanung)
+function openRoomPlanningOverlay() {
+    let modal = document.getElementById('room-planning-overlay');
+    if (!modal) {
+        // Dynamisch erstellen, falls noch nicht im HTML
+        modal = document.createElement('div');
+        modal.id = 'room-planning-overlay';
+        modal.className = 'app-overlay-modal';
+        modal.innerHTML = `
+            <div class="app-overlay-content">
+                <button class="app-overlay-close" onclick="closeAllOverlays()"><span class="material-symbols-outlined">close</span></button>
+                <h2 style="color: #e67e22; margin-top:0;">Raumplanung</h2>
+                <p style="color: #aaa;">Hier entsteht die Raumplanungs-Ansicht als Overlay.</p>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    modal.classList.add('active');
+    updateHeaderActiveState(event.currentTarget);
+}
+
+    
 
 
     
