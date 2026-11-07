@@ -8203,7 +8203,17 @@ function getDoppellektionPartnerSlot(currentSlot) {
 
 
 window.saveImmediately = async function(payload, options = {}) {
-    if (!supabaseClient || !payload) return { status: "error", msg: "Fehlerhafte Daten" };
+    console.log("🚀 saveImmediately wurde aufgerufen mit Payload:", payload);
+
+    if (!supabaseClient) {
+        console.error("❌ ABBRUCH: supabaseClient ist nicht definiert!");
+        return { status: "error", msg: "Supabase-Client fehlt" };
+    }
+
+    if (!payload) {
+        console.error("❌ ABBRUCH: Kein Payload übergeben!");
+        return { status: "error", msg: "Keine Daten übergeben" };
+    }
 
     try {
         const dp = document.getElementById('datePicker');
@@ -8211,11 +8221,12 @@ window.saveImmediately = async function(payload, options = {}) {
         const slotNum = parseInt(payload.slot, 10);
         const aktuellesKuerzel = (payload.verfasser || (typeof userKuerzel !== 'undefined' ? userKuerzel : "") || payload.kuerzel || "").toString().trim().toLowerCase();
 
+        console.log(`🔍 Prüfe Live-Status für Datum: ${dateVal}, Slot: ${slotNum}, Mein Kürzel: "${aktuellesKuerzel}"`);
+
         const gewählteHalle = (payload.halle || "").trim().toLowerCase();
         
-        // Wenn es sich um eine echte Hallenbuchung handelt (kein Ausfall/Löschen)
         if (gewählteHalle !== "" && gewählteHalle !== "ausfall" && gewählteHalle !== "beendet") {
-            // HOL DIREKT FRISCH DIE DB-DATEN FÜR DIESEN SLOT
+            // Frischen Stand aus der DB holen
             const { data: dbEintrag, error: dbError } = await supabaseClient
                 .from('buchungen_db')
                 .select('id, slot, halle, verfasser')
@@ -8223,26 +8234,33 @@ window.saveImmediately = async function(payload, options = {}) {
                 .eq('slot', slotNum)
                 .maybeSingle();
 
+            console.log("📥 DB-Antwort beim Live-Check:", { dbEintrag, dbError });
+
             if (!dbError && dbEintrag) {
                 const dbHalle = (dbEintrag.halle || "").trim().toLowerCase();
                 const dbVerfasser = (dbEintrag.verfasser || "").trim().toLowerCase();
 
-                // Wenn in der DB schon eine Halle steht und sie NICHT leer/Ausfall ist
+                console.log(`📊 Vergleich -> DB-Halle: "${dbHalle}" | DB-Verfasser: "${dbVerfasser}" | Wunsch-Halle: "${gewählteHalle}"`);
+
                 if (dbHalle !== "" && dbHalle !== "ausfall" && dbHalle !== "beendet") {
-                    
-                    // Prüfen, ob es NICHT der eigene Eintrag ist (anhand des Kürzel-Vergleichs)
+                    // WICHTIG BEIM TESTEN: Wenn du in zwei Tabs mit DEMSELBEN Kürzel getestet hast, 
+                    // ist dbVerfasser === aktuellesKuerzel! Deshalb hier zum Testen auch auf fremde ID prüfen:
                     if (dbVerfasser !== aktuellesKuerzel) {
-                        console.warn("🛑 EISERNER STOPP: Halle wurde soeben vergeben von:", dbVerfasser);
+                        console.warn(`🛑 KOLLIDIRT! Fremder User "${dbVerfasser}" hat bereits gebucht.`);
                         return { 
                             status: "conflict", 
-                            msg: `Achtung! Kollege (${dbEintrag.verfasser || 'Anderer'}) war schneller und hat diese Halle soeben belegt!` 
+                            msg: `Achtung! Kollege (${dbEintrag.verfasser || 'Anderer'}) war schneller!` 
                         };
+                    } else {
+                        console.log("ℹ️ Eintrag in DB gehört zu dir selbst (Update-Fall). Erlaubt.");
                     }
                 }
+            } else {
+                console.log("✅ Slot in DB ist komplett frei oder Abfrage leer.");
             }
         }
 
-        // 2. Eigentlicher Speicher-Vorgang (Update / Insert)
+        // Rest des Speicherns...
         const { data: existingData } = await supabaseClient
             .from('buchungen_db')
             .select('id')
@@ -8263,33 +8281,25 @@ window.saveImmediately = async function(payload, options = {}) {
         };
 
         if (existingData && existingData.id) {
+            console.log("✍️ Führe UPDATE aus für ID:", existingData.id);
             const { error: updateError } = await supabaseClient
                 .from('buchungen_db')
                 .update(bookingData)
                 .eq('id', existingData.id);
             if (updateError) throw updateError;
         } else {
+            console.log("➕ Führe INSERT aus...");
             const { error: insertError } = await supabaseClient
                 .from('buchungen_db')
                 .insert([bookingData]);
             if (insertError) throw insertError;
         }
 
-        // News-Trigger
-        if (typeof window.saveNewsToDBFrontend === 'function') {
-            await window.saveNewsToDBFrontend({
-                typ: (payload.typ || bookingData.halle || "").toString().toLowerCase().trim(),
-                slot: slotNum,
-                klasse: bookingData.klasse,
-                verfasser: aktuellesKuerzel,
-                datum: dateVal
-            }, window.lastPlanData);
-        }
-
+        console.log("🎯 Speicherbefehl erfolgreich ausgeführt!");
         return { status: "success", msg: "Erfolgreich gespeichert" };
 
     } catch (e) {
-        console.error("❌ Fehler beim Speichern:", e);
+        console.error("❌ Kritischer Fehler in saveImmediately:", e);
         return { status: "error", msg: e.toString() };
     }
 };
