@@ -4085,6 +4085,150 @@ input.stellvertretung-input {
     }
 }
     
+
+
+/* ============================================================
+   3. HAUPT-KOPFZEILE (TOP HEADER IM BILD-LOOK)
+   ============================================================ */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto 10px auto; /* Abstand nach unten zur Datums-Leiste */
+    background: #262626;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    z-index: 60;
+}
+
+.header-left, .header-center, .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Logo-Container (Ganz links oben) */
+.app-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    width: 36px;
+    height: 36px;
+    font-weight: bold;
+    color: #e67e22;
+    font-size: 16px;
+    text-decoration: none;
+    letter-spacing: -0.5px;
+}
+
+/* Haupt-Navigationslinks (Übersicht, Stundenpläne, etc.) */
+.header-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    color: #aaa;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.header-nav-link .material-symbols-outlined {
+    font-size: 18px;
+    color: #888;
+    transition: color 0.2s;
+}
+
+.header-nav-link:hover {
+    color: #eee;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.header-nav-link:hover .material-symbols-outlined {
+    color: #e67e22;
+}
+
+/* Aktive Seite (wie "Stundenpläne" im Bild) */
+.header-nav-link.active {
+    background: #1a1a1a;
+    color: #fff;
+    border: 1px solid #333;
+}
+
+.header-nav-link.active .material-symbols-outlined {
+    color: #e67e22;
+}
+
+/* Rechte Symbole im Header (User-Avatar, Chat, Refresh) */
+.header-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 50%; /* Rund wie im Bild */
+    color: #e67e22;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.header-icon-btn.square-variant {
+    border-radius: 8px; /* Falls eckige Icon-Buttons gewünscht sind */
+}
+
+.header-icon-btn:hover {
+    background: #2d2d2d;
+    border-color: #e67e22;
+}
+
+.header-icon-btn .material-symbols-outlined {
+    font-size: 18px;
+    color: #e67e22;
+    margin: 0;
+}
+
+/* Benutzer-Initialen-Button */
+.user-avatar-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #333;
+    border: 1px solid #444;
+    color: #eee;
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.user-avatar-btn:hover {
+    border-color: #e67e22;
+}
+
+
+
+
+
+    
+
+
+
     
 </style>
 
@@ -4138,6 +4282,63 @@ input.stellvertretung-input {
         </p>
     </div>
 </div>
+
+
+<!-- ============================================================
+     NEUE KOPFZEILE (OBERHALB DER DATUMS-NAVIGATION)
+     ============================================================ -->
+<div class="app-header">
+    <!-- Links: Logo & Hauptmenü-Links -->
+    <div class="header-left">
+        <!-- Logo ganz links oben (Beispiel mit 'B3' wie im Bild) -->
+        <a href="#" class="app-logo" title="Startseite">B3</a>
+
+        <!-- Navigationselemente -->
+        <button class="header-nav-link" onclick="switchMainView('uebersicht')">
+            <span class="material-symbols-outlined">home</span>
+            <span>Übersicht</span>
+        </button>
+        
+        <button class="header-nav-link active" onclick="switchMainView('stundenplaene')">
+            <span class="material-symbols-outlined">calendar_month</span>
+            <span>Stundenpläne</span>
+        </button>
+
+        <button class="header-nav-link" onclick="switchMainView('raumplanung')">
+            <span class="material-symbols-outlined">meeting_room</span>
+            <span>Raumplanung</span>
+        </button>
+
+        <button class="header-nav-link" onclick="switchMainView('personal')">
+            <span class="material-symbols-outlined">person</span>
+            <span>Personal</span>
+        </button>
+
+        <button class="header-nav-link" onclick="switchMainView('links')">
+            <span class="material-symbols-outlined">link</span>
+            <span>Links</span>
+        </button>
+    </div>
+
+    <!-- Rechts: Profil, Chat & Sync -->
+    <div class="header-right">
+        <!-- Benutzer-Initialen (z.B. angemeldetes Kürzel) -->
+        <div class="user-avatar-btn" title="Angemeldet als User">
+            <span id="header-user-initial">B</span>
+        </div>
+
+        <!-- Chat Schnellzugriff -->
+        <button class="header-icon-btn" onclick="openChat()" title="Chat öffnen">
+            <span class="material-symbols-outlined">chat</span>
+        </button>
+
+        <!-- Aktualisieren / Refresh -->
+        <button class="header-icon-btn" onclick="changeDayAndLoad(document.getElementById('datePicker').value, 'refresh')" title="Aktualisieren">
+            <span class="material-symbols-outlined">refresh</span>
+        </button>
+    </div>
+</div>
+
 
     
     
