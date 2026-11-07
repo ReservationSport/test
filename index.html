@@ -8242,18 +8242,20 @@ window.saveImmediately = async function(payload, options = {}) {
 
                 console.log(`📊 Vergleich -> DB-Halle: "${dbHalle}" | DB-Verfasser: "${dbVerfasser}" | Wunsch-Halle: "${gewählteHalle}"`);
 
-                if (dbHalle !== "" && dbHalle !== "ausfall" && dbHalle !== "beendet") {
-                    // WICHTIG BEIM TESTEN: Wenn du in zwei Tabs mit DEMSELBEN Kürzel getestet hast, 
-                    // ist dbVerfasser === aktuellesKuerzel! Deshalb hier zum Testen auch auf fremde ID prüfen:
-                    if (dbVerfasser !== aktuellesKuerzel) {
-                        console.warn(`🛑 KOLLIDIRT! Fremder User "${dbVerfasser}" hat bereits gebucht.`);
-                        return { 
-                            status: "conflict", 
-                            msg: `Achtung! Kollege (${dbEintrag.verfasser || 'Anderer'}) war schneller!` 
-                        };
-                    } else {
-                        console.log("ℹ️ Eintrag in DB gehört zu dir selbst (Update-Fall). Erlaubt.");
-                    }
+                // 🛑 STRENGER KONFLIKT-CHECK:
+                // Wenn ein fremder User diesen Slot besetzt hat (auch wenn die Halle im DB-Eintrag noch leer war) 
+                // ODER bereits eine andere Halle vergeben ist, schlagen wir Alarm!
+                const istFremderUser = dbVerfasser !== "" && dbVerfasser !== aktuellesKuerzel;
+                const istFremdeHalle = dbHalle !== "" && dbHalle !== "ausfall" && dbHalle !== "beendet";
+
+                if (istFremderUser || istFremdeHalle) {
+                    console.warn(`🛑 KOLLIDIRT! Slot ist bereits durch "${dbVerfasser}" oder Halle "${dbHalle}" belegt.`);
+                    return { 
+                        status: "conflict", 
+                        msg: `Achtung! Kollege (${dbEintrag.verfasser || 'Anderer'}) war schneller und hat diesen Slot/diese Halle soeben belegt!` 
+                    };
+                } else {
+                    console.log("ℹ️ Eintrag in DB gehört zu dir selbst (Update-Fall). Erlaubt.");
                 }
             } else {
                 console.log("✅ Slot in DB ist komplett frei oder Abfrage leer.");
