@@ -8203,7 +8203,7 @@ function getDoppellektionPartnerSlot(currentSlot) {
 
 
 /**
- * Der "Postbote": Sendet Daten direkt an Supabase, prüft auf Hallen-Kollisionen und generiert automatisch News-Einträge
+ * Der "Postbote": Sendet Daten direkt an Supabase, prüft eiskalt auf Live-Kollisionen und generiert automatisch News-Einträge
  */
 window.saveImmediately = async function(payload, options = {}) {
     // 1. Validierung
@@ -8235,7 +8235,7 @@ window.saveImmediately = async function(payload, options = {}) {
             verfasser: aktuellesKuerzel
         };
 
-        // 2. Prüfen, ob für dieses Datum & diesen Slot bereits ein Eintrag existiert
+        // 2. Prüfen, ob für dieses Datum & diesen Slot bereits ein eigener Eintrag existiert
         let query = supabaseClient
             .from('buchungen_db')
             .select('id')
@@ -8249,10 +8249,11 @@ window.saveImmediately = async function(payload, options = {}) {
         const { data: existingData, error: fetchError } = await query.maybeSingle();
         if (fetchError) throw fetchError;
 
-        // 🛡️ 3. SICHERHEITS-CHECK: Ist die gewünschte Halle inzwischen von jemand anderem belegt worden?
+        // 🛡️ 3. EISERNER LIVE-CHECK: Prüfen, ob die Halle in diesem Slot JETZT gerade von jemand anderem belegt wurde
         const gewählteHalle = (payload.halle || "").trim().toLowerCase();
         
         if (gewählteHalle !== "" && gewählteHalle !== "ausfall" && gewählteHalle !== "beendet") {
+            // Wir holen alle aktiven Buchungen für diesen genauen Slot frisch aus der DB
             const { data: kollisionsDaten, error: kollisionError } = await supabaseClient
                 .from('buchungen_db')
                 .select('id, slot, halle, klasse, verfasser')
@@ -8261,21 +8262,25 @@ window.saveImmediately = async function(payload, options = {}) {
 
             if (!kollisionError && kollisionsDaten) {
                 const kollidiert = kollisionsDaten.some(eintrag => {
-                    // Ignorieren, falls es sich um den eigenen bestehenden Eintrag handelt den wir updaten
+                    // Ignorieren, falls es sich um den eigenen bestehenden Datensatz handelt
                     if (existingData && eintrag.id === existingData.id) return false;
                     
                     const hBestehend = (eintrag.halle || "").trim().toLowerCase();
                     if (hBestehend === "" || hBestehend === "ausfall" || hBestehend === "beendet") return false;
 
-                    // Exakter Abgleich oder Teil-Match (z.B. bei kombinierten Hallen wie Halle 1 + 2)
+                    // Prüfen auf exakten Match oder Überschneidung (z.B. Halle 1 vs Halle 1+2)
                     return hBestehend.includes(gewählteHalle) || gewählteHalle.includes(hBestehend);
                 });
 
                 if (kollidiert) {
-                    console.warn("⚠️ Doppelbelegungs-Versuch abgebrochen! Halle wurde soeben von einem anderen Kollegen vergeben.");
+                    // Finde heraus, wer es gebucht hat (für eine präzise Meldung)
+                    const fremderEintrag = kollisionsDaten.find(e => (!existingData || e.id !== existingData.id) && e.halle && e.halle.trim().toLowerCase() !== "" && e.halle !== "ausfall");
+                    const andererUser = fremderEintrag ? (fremderEintrag.verfasser || "ein anderer Kollege") : "ein anderer Kollege";
+
+                    console.warn("⚠️ Doppelbelegungs-Versuch im Live-Check blockiert!");
                     return { 
                         status: "conflict", 
-                        msg: "Halle wurde soeben von einem anderen Kollegen in diesem Slot reserviert! Bitte wähle eine andere Halle." 
+                        msg: `Achtung! Diese Halle wurde soeben in diesem Slot von ${andererUser} reserviert!` 
                     };
                 }
             }
