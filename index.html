@@ -8235,10 +8235,44 @@ window.saveImmediately = async function(payload, options = {}) {
             verfasser: aktuellesKuerzel
         };
 
-        // 2. Prüfen, ob für dieses Datum & diesen Slot bereits ein eigener Eintrag existiert
+        const gewählteHalle = (payload.halle || "").trim().toLowerCase();
+
+        // 🛡️ 2. EISERNER LIVE-CHECK (VOR JEDER QUERY): Gibt es bereits einen fremden Eintrag für diesen Slot/diese Halle?
+        if (gewählteHalle !== "" && gewählteHalle !== "ausfall" && gewählteHalle !== "beendet") {
+            const { data: aktuelleKollisionen, error: kollisionError } = await supabaseClient
+                .from('buchungen_db')
+                .select('id, slot, halle, klasse, verfasser')
+                .eq('datum', dateVal)
+                .eq('slot', slotNum);
+
+            if (!kollisionError && aktuelleKollisionen && aktuelleKollisionen.length > 0) {
+                const fremderEintrag = aktuelleKollisionen.find(eintrag => {
+                    const hBestehend = (eintrag.halle || "").trim().toLowerCase();
+                    // Ignorieren, wenn leer oder Ausfall
+                    if (hBestehend === "" || hBestehend === "ausfall" || hBestehend === "beendet") return false;
+                    
+                    // Prüfen, ob es sich um denselben User handelt (dann ist es sein eigenes Update/Überschreiben)
+                    const istEigenerUser = eintrag.verfasser && aktuellesKuerzel && eintrag.verfasser.toLowerCase() === aktuellesKuerzel.toLowerCase();
+                    if (istEigenerUser) return false;
+
+                    // Kollidiert die Halle? (Exakter Match oder Teil-Match)
+                    return hBestehend.includes(gewählteHalle) || gewählteHalle.includes(hBestehend);
+                });
+
+                if (fremderEintrag) {
+                    console.warn("⚠️ Doppelbelegungs-Versuch im Live-Check blockiert! Vergeben durch:", fremderEintrag.verfasser);
+                    return { 
+                        status: "conflict", 
+                        msg: `Achtung! Diese Halle wurde soeben in diesem Slot von Kollege (${fremderEintrag.verfasser || 'anderer User'}) reserviert!` 
+                    };
+                }
+            }
+        }
+
+        // 3. Erst JETZT prüfen wir nach dem eigenen bestehenden Eintrag für das Update
         let query = supabaseClient
             .from('buchungen_db')
-            .select('id')
+            .select('id, verfasser')
             .eq('datum', dateVal)
             .eq('slot', slotNum);
 
@@ -8249,40 +8283,14 @@ window.saveImmediately = async function(payload, options = {}) {
         const { data: existingData, error: fetchError } = await query.maybeSingle();
         if (fetchError) throw fetchError;
 
-        // 🛡️ 3. EISERNER LIVE-CHECK: Prüfen, ob die Halle in diesem Slot JETZT gerade von jemand anderem belegt wurde
-        const gewählteHalle = (payload.halle || "").trim().toLowerCase();
-        
-        if (gewählteHalle !== "" && gewählteHalle !== "ausfall" && gewählteHalle !== "beendet") {
-            // Wir holen alle aktiven Buchungen für diesen genauen Slot frisch aus der DB
-            const { data: kollisionsDaten, error: kollisionError } = await supabaseClient
-                .from('buchungen_db')
-                .select('id, slot, halle, klasse, verfasser')
-                .eq('datum', dateVal)
-                .eq('slot', slotNum);
-
-            if (!kollisionError && kollisionsDaten) {
-                const kollidiert = kollisionsDaten.some(eintrag => {
-                    // Ignorieren, falls es sich um den eigenen bestehenden Datensatz handelt
-                    if (existingData && eintrag.id === existingData.id) return false;
-                    
-                    const hBestehend = (eintrag.halle || "").trim().toLowerCase();
-                    if (hBestehend === "" || hBestehend === "ausfall" || hBestehend === "beendet") return false;
-
-                    // Prüfen auf exakten Match oder Überschneidung (z.B. Halle 1 vs Halle 1+2)
-                    return hBestehend.includes(gewählteHalle) || gewählteHalle.includes(hBestehend);
-                });
-
-                if (kollidiert) {
-                    // Finde heraus, wer es gebucht hat (für eine präzise Meldung)
-                    const fremderEintrag = kollisionsDaten.find(e => (!existingData || e.id !== existingData.id) && e.halle && e.halle.trim().toLowerCase() !== "" && e.halle !== "ausfall");
-                    const andererUser = fremderEintrag ? (fremderEintrag.verfasser || "ein anderer Kollege") : "ein anderer Kollege";
-
-                    console.warn("⚠️ Doppelbelegungs-Versuch im Live-Check blockiert!");
-                    return { 
-                        status: "conflict", 
-                        msg: `Achtung! Diese Halle wurde soeben in diesem Slot von ${andererUser} reserviert!` 
-                    };
-                }
+        // Sicherheitsnetz: Falls ein Eintrag existiert, aber von einem *anderen* User erstellt wurde und wir ihn via ID nicht abgefangen haben
+        if (existingData && existingData.id && existingData.verfasser) {
+            const istEigenerEintrag = aktuellesKuerzel && existingData.verfasser.toLowerCase() === aktuellesKuerzel.toLowerCase();
+            if (!istEigenerEintrag && gewählteHalle !== "" && gewählteHalle !== "ausfall" && gewählteHalle !== "beendet") {
+                return { 
+                    status: "conflict", 
+                    msg: `Achtung! Dieser Slot wurde soeben von Kollege (${existingData.verfasser}) belegt!` 
+                };
             }
         }
 
@@ -8340,54 +8348,62 @@ window.saveImmediately = async function(payload, options = {}) {
 
 // Interne Hilfsfunktion, die die Payloads nacheinander an saveImmediately übergibt
 function executePayloads(payloadArray, onCompleteVisuals) {
-    payloadArray.forEach(async p => {
-        // 1. NEU: Box suchen und DOM-Attribut als Sperre setzen
-        const box = document.querySelector(`[data-slot="${p.slot}"]`);
-        if (box) {
-            box.setAttribute('data-sync-status', 'pending');
-        }
-
-        // 2. Visuelles UI-Update sofort triggern
-        if (typeof onCompleteVisuals === "function") {
-            onCompleteVisuals(p); 
-        }
-
-        // 3. Abschicken
-        try {
-            const result = await saveImmediately(p);
-            
-            if (result && result.status === "success") {
-                if (p.halle === "Ausfall" || (p.halle && p.halle.includes("Outdoor"))) {
-                    if (typeof window.triggerNewsWrapper === "function") {
-                        window.triggerNewsWrapper(p.halle, p.slot, p.klasse);
-                    }
-                }
-                
-                // --- WICHTIG: KEIN Timeout zum Löschen mehr! ---
-                // Die Sperre bleibt jetzt bestehen, bis syncPlan 
-                // beim nächsten Takt den Erfolg validiert hat.
-                
-            } else if (result && result.status === "conflict") {
-                // 🛑 KOLLISION / DOPPELBELEGUNG ABGEFANGEN
-                if (box) box.removeAttribute('data-sync-status');
-                
-                // Dem Benutzer die Warnmeldung anzeigen
-                alert(result.msg);
-                
-                // Sofort den aktuellen Plan neu laden, um den realen Zustand zu erzwingen
-                const dp = document.getElementById('datePicker');
-                if (typeof changeDayAndLoad === 'function' && dp) {
-                    await changeDayAndLoad(dp.value);
-                }
-            } else {
-                // Falls Server-Fehler: Sperre sofort entfernen
-                if (box) box.removeAttribute('data-sync-status');
+    // Verwendung einer normalen for...of Schleife statt .forEach, 
+    // damit das "await" die Aktionen sauber nacheinander (sequenziell) abarbeitet!
+    (async () => {
+        for (const p of payloadArray) {
+            // 1. Box suchen und DOM-Attribut als Sperre setzen
+            const box = document.querySelector(`[data-slot="${p.slot}"]`);
+            if (box) {
+                box.setAttribute('data-sync-status', 'pending');
             }
-        } catch (e) {
-            // Falls Network-Fehler: Sperre sofort entfernen
-            if (box) box.removeAttribute('data-sync-status');
+
+            // 2. Visuelles UI-Update sofort triggern
+            if (typeof onCompleteVisuals === "function") {
+                onCompleteVisuals(p); 
+            }
+
+            // 3. Abschicken
+            try {
+                const result = await saveImmediately(p);
+                
+                if (result && result.status === "success") {
+                    if (p.halle === "Ausfall" || (p.halle && p.halle.includes("Outdoor"))) {
+                        if (typeof window.triggerNewsWrapper === "function") {
+                            window.triggerNewsWrapper(p.halle, p.slot, p.klasse);
+                        }
+                    }
+                    
+                    // --- WICHTIG: KEIN Timeout zum Löschen mehr! ---
+                    // Die Sperre bleibt jetzt bestehen, bis syncPlan 
+                    // beim nächsten Takt den Erfolg validiert hat.
+                    
+                } else if (result && result.status === "conflict") {
+                    // 🛑 KOLLISION / DOPPELBELEGUNG ABGEFANGEN
+                    if (box) box.removeAttribute('data-sync-status');
+                    
+                    // Dem Benutzer die Warnmeldung anzeigen
+                    alert(result.msg);
+                    
+                    // Sofort den aktuellen Plan neu laden, um den realen Zustand zu erzwingen
+                    const dp = document.getElementById('datePicker');
+                    if (typeof changeDayAndLoad === 'function' && dp) {
+                        await changeDayAndLoad(dp.value);
+                    }
+                    // Bricht die Schleife ab, da bei einem Konflikt (z.B. Doppellektion) 
+                    // der Rest hinfällig ist
+                    break; 
+                } else {
+                    // Falls Server-Fehler: Sperre sofort entfernen
+                    if (box) box.removeAttribute('data-sync-status');
+                }
+            } catch (e) {
+                // Falls Network-Fehler: Sperre sofort entfernen
+                if (box) box.removeAttribute('data-sync-status');
+                console.error("Fehler in executePayloads:", e);
+            }
         }
-    });
+    })();
 }
 
 
