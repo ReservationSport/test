@@ -8332,14 +8332,20 @@ function executePayloads(payloadArray, onCompleteVisuals) {
                     // 🛑 KOLLISION / DOPPELBELEGUNG ABGEFANGEN
                     if (box) box.removeAttribute('data-sync-status');
                     
-                    // Dem Benutzer die Warnmeldung anzeigen
+                    // 1. Sofort das Auswahl-Fenster/Menü schließen, damit nicht weitergeklickt wird!
+                    if (typeof closeEditor === 'function') {
+                        closeEditor();
+                    }
+                    
+                    // 2. Dem Benutzer die Warnmeldung anzeigen
                     alert(result.msg);
                     
-                    // Sofort den aktuellen Plan neu laden, um den realen Zustand zu erzwingen
+                    // 3. Sofort den aktuellen Plan neu laden, um den realen Zustand zu erzwingen
                     const dp = document.getElementById('datePicker');
                     if (typeof changeDayAndLoad === 'function' && dp) {
                         await changeDayAndLoad(dp.value);
                     }
+                    
                     // Bricht die Schleife ab, da bei einem Konflikt (z.B. Doppellektion) 
                     // der Rest hinfällig ist
                     break; 
