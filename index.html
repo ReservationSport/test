@@ -4380,7 +4380,7 @@ input.stellvertretung-input {
             <img src="icon-512.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px;">
         </a>
 
-        <!-- STUNDENPLAN MIT DROPDOWN-MENÜ (Startet ohne .active) -->
+        <!-- STUNDENPLAN MIT DROPDOWN-MENÜ -->
         <div class="header-nav-container">
             <button class="header-nav-link" id="stundenplan-menu-btn" onclick="toggleHeaderDropdown('stundenplan-dropdown', event)">
                 <span class="material-symbols-outlined">calendar_month</span>
@@ -4389,6 +4389,10 @@ input.stellvertretung-input {
 
             <!-- Das Dropdown-Menü unterhalb des Stundenplan-Buttons -->
             <div id="stundenplan-dropdown" class="header-dropdown-menu">
+                <div class="header-dropdown-item" onclick="oeffneVertretungsDialog(); closeAllHeaderDropdowns();">
+                    <span class="material-symbols-outlined">swap_horiz</span> 
+                    <span>Stellvertretung eintragen</span>
+                </div>
                 <div class="header-dropdown-item" onclick="startAddMode(); closeAllHeaderDropdowns();">
                     <span class="material-symbols-outlined">add_circle</span> 
                     <span>Lektion hinzufügen</span>
@@ -4399,12 +4403,6 @@ input.stellvertretung-input {
                 </div>
             </div>
         </div>
-        
-        <!-- Unterricht als Overlay -->
-        <button class="header-nav-link" onclick="openRoomPlanningOverlay()">
-            <span class="material-symbols-outlined">school</span>
-            <span>UNTERRICHT</span>
-        </button>
 
         <!-- Team als Overlay -->
         <button class="header-nav-link" onclick="openPersonalOverlay()">
