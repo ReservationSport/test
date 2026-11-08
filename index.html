@@ -6297,10 +6297,16 @@ if (planContainer) {
         }, 250);
     });
 
-    // 3. DOPPELKLICK: Entweder allgemeines Notizbuch (auf Datumszeile) oder Klassen-Link (auf Box)
+    // 3. DOPPELKLICK: Entweder allgemeines Notizbuch (auf freier Fläche der Datumszeile) oder Klassen-Link (auf Box)
 document.addEventListener('dblclick', async function(e) {
     if (window.moveMode) {
         e.stopPropagation();
+        return;
+    }
+
+    // WICHTIG: Wenn auf einen Button, Link oder ein Input doppelt geklickt wird, 
+    // soll das Notizbuch NICHT aufgehen, damit Buttons/Login/Kalender normal funktionieren!
+    if (e.target.closest('button, input, a, .nav-btn, .refresh-btn, .date-container, .header-icon-btn, user-avatar-btn')) {
         return;
     }
 
@@ -6310,7 +6316,7 @@ document.addEventListener('dblclick', async function(e) {
         clickTimeout = null;
     }
 
-    // --- FALL A: Doppelklick auf die fixierte Datumszeile (.date-control) ---
+    // --- FALL A: Doppelklick auf die fixierte Datumszeile (.date-control) (freie Fläche) ---
     const dateControl = e.target.closest('.date-control');
     if (dateControl) {
         e.stopPropagation();
@@ -6362,7 +6368,7 @@ document.addEventListener('dblclick', async function(e) {
     const box = e.target.closest('.box:not(.zeit-box):not(.header-row)');
     if (!box) return;
 
-    // Prüfen, ob der Event innerhalb des planContainers passiert ist (Sicherheitshalber)
+    // Prüfen, ob der Event innerhalb des planContainers passiert ist
     const planContainer = document.getElementById('plan-container') || document.querySelector('.grid');
     if (planContainer && !planContainer.contains(box)) return;
 
@@ -6370,10 +6376,10 @@ document.addEventListener('dblclick', async function(e) {
     const isStv = box.classList.contains('is-stv');
     const canEdit = isMine || isStv;
 
-    // WICHTIG: Wenn es nicht deine Box ist -> Sofort abbrechen!
+    // Wenn es nicht deine Box ist -> Abbrechen!
     if (!canEdit) return;
 
-    e.stopPropagation(); // Verhindert unerwünschte Nebeneffekte
+    e.stopPropagation();
 
     // 1. Klasse aus der Box auslesen
     const klasse = box.querySelector('.klasse-label')?.innerText.trim() || "";
