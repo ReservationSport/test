@@ -6297,117 +6297,120 @@ if (planContainer) {
         }, 250);
     });
 
-    // 3. DOPPELKLICK: Entweder allgemeines Notizbuch (auf Header) oder Klassen-Link (auf Box)
-    planContainer.addEventListener('dblclick', async function(e) {
-        if (window.moveMode) {
-            e.stopPropagation();
-            return;
-        }
+    // 3. DOPPELKLICK: Entweder allgemeines Notizbuch (auf Datumszeile) oder Klassen-Link (auf Box)
+document.addEventListener('dblclick', async function(e) {
+    if (window.moveMode) {
+        e.stopPropagation();
+        return;
+    }
 
-        // Den wartenden Einfachklick-Timer löschen
-        if (clickTimeout) {
-            clearTimeout(clickTimeout);
-            clickTimeout = null;
-        }
+    // Den wartenden Einfachklick-Timer löschen (falls vorhanden)
+    if (typeof clickTimeout !== 'undefined' && clickTimeout) {
+        clearTimeout(clickTimeout);
+        clickTimeout = null;
+    }
 
-        // --- FALL A: Doppelklick auf die Datums-/Header-Zeile (.header-row) ---
-        const headerRow = e.target.closest('.box.header-row');
-        if (headerRow) {
-            e.stopPropagation();
+    // --- FALL A: Doppelklick auf die fixierte Datumszeile (.date-control) ---
+    const dateControl = e.target.closest('.date-control');
+    if (dateControl) {
+        e.stopPropagation();
 
-            let aktuellerUser = localStorage.getItem('userKuerzel') || "";
-            aktuellerUser = String(aktuellerUser || "").trim().toLowerCase();
-            if (!aktuellerUser) return;
+        let aktuellerUser = localStorage.getItem('userKuerzel') || "";
+        aktuellerUser = String(aktuellerUser || "").trim().toLowerCase();
+        if (!aktuellerUser) return;
 
-            try {
-                // Allgemeines Notizbuch aus der teachers-Tabelle laden (Korrektur: Spalte 'lehrer')
-                const { data, error } = await window.supabaseClient
-                    .from('teachers')
-                    .select('notizbuch')
-                    .ilike('lehrer', `%${aktuellerUser}%`)
-                    .single();
+        try {
+            // Allgemeines Notizbuch aus der teachers-Tabelle laden
+            const { data, error } = await window.supabaseClient
+                .from('teachers')
+                .select('notizbuch')
+                .ilike('lehrer', `%${aktuellerUser}%`)
+                .single();
 
-                if (error || !data || !data.notizbuch) return;
+            if (error || !data || !data.notizbuch) return;
 
-                let generalUrl = data.notizbuch.trim();
-                if (!generalUrl) return;
+            let generalUrl = data.notizbuch.trim();
+            if (!generalUrl) return;
 
-                // URL/Protokoll intelligent öffnen
-                if (generalUrl.toLowerCase().startsWith('http://') || generalUrl.toLowerCase().startsWith('https://') || generalUrl.toLowerCase().startsWith('www.')) {
-                    if (generalUrl.toLowerCase().startsWith('www.')) {
-                        generalUrl = 'https://' + generalUrl;
-                    }
-                    const a = document.createElement('a');
-                    a.href = generalUrl;
-                    a.target = '_blank';
-                    a.rel = 'noopener noreferrer';
-                    document.body.appendChild(a);
-                    setTimeout(() => {
-                        a.click();
-                        document.body.removeChild(a);
-                    }, 10);
-                } else {
-                    if (!generalUrl.toLowerCase().startsWith('onenote:')) {
-                        generalUrl = `onenote:${generalUrl}`;
-                    }
-                    window.location.href = generalUrl;
+            // URL/Protokoll intelligent öffnen
+            if (generalUrl.toLowerCase().startsWith('http://') || generalUrl.toLowerCase().startsWith('https://') || generalUrl.toLowerCase().startsWith('www.')) {
+                if (generalUrl.toLowerCase().startsWith('www.')) {
+                    generalUrl = 'https://' + generalUrl;
                 }
-            } catch (err) {
-                console.error("Fehler beim Öffnen des allgemeinen Notizbuchs:", err);
+                const a = document.createElement('a');
+                a.href = generalUrl;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                document.body.appendChild(a);
+                setTimeout(() => {
+                    a.click();
+                    document.body.removeChild(a);
+                }, 10);
+            } else {
+                if (!generalUrl.toLowerCase().startsWith('onenote:')) {
+                    generalUrl = `onenote:${generalUrl}`;
+                }
+                window.location.href = generalUrl;
             }
-            return;
+        } catch (err) {
+            console.error("Fehler beim Öffnen des allgemeinen Notizbuchs:", err);
+        }
+        return;
+    }
+
+    // --- FALL B: Doppelklick auf eine normale Unterrichtsbox im Plan ---
+    const box = e.target.closest('.box:not(.zeit-box):not(.header-row)');
+    if (!box) return;
+
+    // Prüfen, ob der Event innerhalb des planContainers passiert ist (Sicherheitshalber)
+    const planContainer = document.getElementById('plan-container') || document.querySelector('.grid');
+    if (planContainer && !planContainer.contains(box)) return;
+
+    const isMine = box.classList.contains('is-mine');
+    const isStv = box.classList.contains('is-stv');
+    const canEdit = isMine || isStv;
+
+    // WICHTIG: Wenn es nicht deine Box ist -> Sofort abbrechen!
+    if (!canEdit) return;
+
+    e.stopPropagation(); // Verhindert unerwünschte Nebeneffekte
+
+    // 1. Klasse aus der Box auslesen
+    const klasse = box.querySelector('.klasse-label')?.innerText.trim() || "";
+    if (!klasse) return;
+
+    // 2. Pfad aus dem Cache (master_db) holen
+    const savedPaths = window.oneNotePaths || {};
+    const targetPath = savedPaths[klasse];
+
+    if (!targetPath) return;
+
+    let finalUrl = targetPath.trim();
+    if (!finalUrl) return;
+
+    // 3. Unterscheiden zwischen Web-Link und App-Protokoll
+    if (finalUrl.toLowerCase().startsWith('http://') || finalUrl.toLowerCase().startsWith('https://') || finalUrl.toLowerCase().startsWith('www.')) {
+        if (finalUrl.toLowerCase().startsWith('www.')) {
+            finalUrl = 'https://' + finalUrl;
         }
 
-        // --- FALL B: Doppelklick auf eine normale Unterrichtsbox ---
-        const box = e.target.closest('.box:not(.zeit-box):not(.header-row)');
-        if (!box) return;
-
-        const isMine = box.classList.contains('is-mine');
-        const isStv = box.classList.contains('is-stv');
-        const canEdit = isMine || isStv;
-
-        // WICHTIG: Wenn es nicht deine Box ist -> Sofort abbrechen!
-        if (!canEdit) return;
-
-        e.stopPropagation(); // Verhindert unerwünschte Nebeneffekte
-
-        // 1. Klasse aus der Box auslesen
-        const klasse = box.querySelector('.klasse-label')?.innerText.trim() || "";
-        if (!klasse) return;
-
-        // 2. Pfad aus dem Cache (master_db) holen
-        const savedPaths = window.oneNotePaths || {};
-        const targetPath = savedPaths[klasse];
-
-        if (!targetPath) return;
-
-        let finalUrl = targetPath.trim();
-        if (!finalUrl) return;
-
-        // 3. Unterscheiden zwischen Web-Link und App-Protokoll
-        if (finalUrl.toLowerCase().startsWith('http://') || finalUrl.toLowerCase().startsWith('https://') || finalUrl.toLowerCase().startsWith('www.')) {
-            if (finalUrl.toLowerCase().startsWith('www.')) {
-                finalUrl = 'https://' + finalUrl;
-            }
-
-            const a = document.createElement('a');
-            a.href = finalUrl;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            document.body.appendChild(a);
-            
-            setTimeout(() => {
-                a.click();
-                document.body.removeChild(a);
-            }, 10);
-        } else {
-            if (!finalUrl.toLowerCase().startsWith('onenote:')) {
-                finalUrl = `onenote:${finalUrl}`;
-            }
-            window.location.href = finalUrl;
+        const a = document.createElement('a');
+        a.href = finalUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        
+        setTimeout(() => {
+            a.click();
+            document.body.removeChild(a);
+        }, 10);
+    } else {
+        if (!finalUrl.toLowerCase().startsWith('onenote:')) {
+            finalUrl = `onenote:${finalUrl}`;
         }
-    });
-}
+        window.location.href = finalUrl;
+    }
+});
 
 
 /* ============================================================
