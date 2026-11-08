@@ -78,15 +78,15 @@
 
 
 /* ============================================================
-   1. BASIS & GRID-STRUKTUR (Bild 2 Look)
+   1. BASIS & GRID-STRUKTUR
    ============================================================ */
 body { 
     font-family: 'Segoe UI', 'Oswald', sans-serif; 
     background: #1a1a1a; 
     color: white; 
-    padding: 15px; /* Etwas kompakterer Rand für Handys */
+    padding: 15px; 
     margin: 0;
-    box-sizing: border-box; /* Wichtig, damit Padding die Breite nicht sprengt */
+    box-sizing: border-box; 
 }
 
 :root {
@@ -103,11 +103,9 @@ body {
     gap: 2px;  
     max-width: 1000px;  
     margin: auto;
-    
-    /* NEU: Schafft oben exakt den Platz für die fixierte Kopf- und Datumszeile */
-    margin-top: 107px !important; 
-    
+    margin-top: 107px !important; /* Platz für die fixierten Leisten oben */
     pointer-events: auto;
+    box-sizing: border-box;
 }
 
 
@@ -117,23 +115,27 @@ body {
    KOPFBEREICH, NAVIGATION & DATUMSZEILE (KOMPLETT-KAPITEL)
    ============================================================ */
 
-/* 1. Haupt-Kopfzeile (Fixiert oben mit blickdichtem Hintergrund) */
+/* 1. Haupt-Kopfzeile (Fixiert oben, exakt bündig auf PC & Handy) */
 .app-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
     max-width: 1000px;
-    margin: 0 auto; 
+    background-color: #262626 !important; 
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 8px 12px;
+    box-sizing: border-box;
     z-index: 60;
     
-    /* Fixierung oben mit responsiver Zentrierung */
+    /* Perfekte Fixierung und Ausrichtung für alle Bildschirmgrößen */
     position: fixed;
-    top: 10px;
-    left: 0;
-    right: 0;
-    margin-left: auto;
-    margin-right: auto;
+    top: 15px; /* Passt sich perfekt an das 15px Body-Padding an */
+    left: 50%;
+    transform: translateX(-50%);
+    /* width: 100% minus den linken/rechten Body-Abstand auf Handys */
+    width: calc(100% - 30px); 
 }
 
 .header-left, .header-center, .header-right {
@@ -259,7 +261,7 @@ body {
 }
 
 
-/* 2. Datumszeile & Navigations-Controls (Mit Abstand zur Kopfzeile) */
+/* 2. Datumszeile & Navigations-Controls */
 .date-control {
     display: flex;
     justify-content: center; 
@@ -267,7 +269,6 @@ body {
     gap: 8px;
     width: 100%;
     max-width: 1000px;
-    margin: 0 auto;
     margin-top: 10px; 
     margin-bottom: 2px; 
     padding: 11px 12px;
@@ -276,13 +277,12 @@ body {
     border-radius: 0; 
     box-sizing: border-box;
     
-    /* Fixierung und responsive Ausrichtung */
+    /* Fixierung und identische responsive Ausrichtung wie der Header */
     position: fixed;
-    top: 48px; /* Klebt exakt unter der fixierten Kopfzeile */
-    left: 0;
-    right: 0;
-    margin-left: auto;
-    margin-right: auto;
+    top: 53px; /* Exakt unter der Kopfzeile */
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 30px);
     z-index: 55; 
 }
 
@@ -471,14 +471,11 @@ body {
     left: 50%;
     transform: translateX(-50%);
     width: 100%;
-
-    
-    /* Die Höhe muss genau dem Bereich entsprechen, den Kopfzeile + Datumszeile + Abstände einnehmen */
+    max-width: 1000px;
     height: 122px; 
-    
-    background-color: #1a1a1a; /* Exakt deine Hintergrundfarbe (#1a1a1a) */
-    z-index: 45; /* Liegt über der Tabelle, aber unter der Datumszeile (55) und Kopfzeile (60) */
-    pointer-events: none; /* Damit man durch das Overlay hindurchklicken kann */
+    background-color: #1a1a1a; 
+    z-index: 45; 
+    pointer-events: false; 
 }
     
     
