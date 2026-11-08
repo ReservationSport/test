@@ -4388,10 +4388,9 @@ input.stellvertretung-input {
                 <span>STUNDENPLAN</span>
             </button>
 
-            
             <!-- Das Dropdown-Menü unterhalb des Stundenplan-Buttons -->
             <div id="stundenplan-dropdown" class="header-dropdown-menu">
-                 <div class="header-dropdown-item" onclick="openStellvertretung(); closeAllHeaderDropdowns();">
+                <div class="header-dropdown-item" onclick="openStellvertretung(); closeAllHeaderDropdowns();">
                     <span class="material-symbols-outlined">person_search</span> 
                     <span>Stellvertretung suchen</span>
                 </div>
@@ -4410,17 +4409,57 @@ input.stellvertretung-input {
             </div>
         </div>
 
-        <!-- Team als Overlay -->
-        <button class="header-nav-link" onclick="openPersonalOverlay()">
-            <span class="material-symbols-outlined">groups</span>
-            <span>TEAM</span>
-        </button>
+        <!-- TEAM MIT DROPDOWN-MENÜ -->
+        <div class="header-nav-container">
+            <button class="header-nav-link" id="team-menu-btn" onclick="toggleHeaderDropdown('team-dropdown', event)">
+                <span class="material-symbols-outlined">groups</span>
+                <span>TEAM</span>
+            </button>
 
-        <!-- Infrastruktur als Overlay -->
-        <button class="header-nav-link" onclick="openLinksOverlay()">
-            <span class="material-symbols-outlined">domain</span>
-            <span>INFRASTRUKTUR</span>
-        </button>
+            <!-- Das Dropdown-Menü unterhalb des Team-Buttons -->
+            <div id="team-dropdown" class="header-dropdown-menu">
+                <div class="header-dropdown-item" onclick="openTeamkasse(); closeAllHeaderDropdowns();">
+                    <span class="material-symbols-outlined">payments</span> 
+                    <span>Teamkasse</span>
+                </div>
+                <div class="header-dropdown-item" onclick="openIdeenbrett(); closeAllHeaderDropdowns();">
+                    <span class="material-symbols-outlined">lightbulb</span> 
+                    <span>Ideenbrett</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- INFRASTRUKTUR MIT DROPDOWN-MENÜ -->
+        <div class="header-nav-container">
+            <button class="header-nav-link" id="infrastruktur-menu-btn" onclick="toggleHeaderDropdown('infrastruktur-dropdown', event)">
+                <span class="material-symbols-outlined">domain</span>
+                <span>INFRASTRUKTUR</span>
+            </button>
+
+            <!-- Das Dropdown-Menü unterhalb des Infrastruktur-Buttons -->
+            <div id="infrastruktur-dropdown" class="header-dropdown-menu">
+                <div class="header-dropdown-item" onclick="openBanner(); closeAllHeaderDropdowns();">
+                    <span class="material-symbols-outlined">campaign</span> 
+                    <span>Bannermeldung</span>
+                </div>
+                <div class="header-dropdown-item" onclick="openMeldungenDefekte(); closeAllHeaderDropdowns();">
+                    <span class="material-symbols-outlined">build</span> 
+                    <span>Meldungen (Defekte)</span>
+                </div>
+                <div class="header-dropdown-item" onclick="openKruecken(); closeAllHeaderDropdowns();">
+                    <span class="material-symbols-outlined">accessible</span> 
+                    <span>Krücken</span>
+                </div>
+                <div class="header-dropdown-item" onclick="openApotheke(); closeAllHeaderDropdowns();">
+                    <span class="material-symbols-outlined">medical_services</span> 
+                    <span>Apotheke</span>
+                </div>
+                <div class="header-dropdown-item" onclick="openMaterialwuensche(); closeAllHeaderDropdowns();">
+                    <span class="material-symbols-outlined">inventory_2</span> 
+                    <span>Materialwünsche</span>
+                </div>
+            </div>
+        </div>
         
         <!-- Links als Overlay -->
         <button class="header-nav-link" onclick="openLinksOverlay()">
@@ -4463,6 +4502,8 @@ input.stellvertretung-input {
 <!-- Globales Backdrop-Overlay für die Kopfzeilen-Dropdowns -->
 <div id="app-backdrop" class="app-backdrop" onclick="closeAllHeaderDropdowns()"></div>
 
+
+    
 <!-- ============================================================
      KOMPAKTE DATUMS-NAVIGATION (ERSETZT DIE ALTE TEXTZEILE)
      ============================================================ -->
