@@ -4422,7 +4422,7 @@ input.stellvertretung-input {
                     <span class="material-symbols-outlined">payments</span> 
                     <span>Teamkasse</span>
                 </div>
-                <div class="header-dropdown-item" onclick="openIdeenbrett(); closeAllHeaderDropdowns();">
+                <div class="header-dropdown-item" onclick="openIdeen(); closeAllHeaderDropdowns();">
                     <span class="material-symbols-outlined">lightbulb</span> 
                     <span>Ideenbrett</span>
                 </div>
@@ -4442,7 +4442,7 @@ input.stellvertretung-input {
                     <span class="material-symbols-outlined">campaign</span> 
                     <span>Bannermeldung</span>
                 </div>
-                <div class="header-dropdown-item" onclick="openMeldungenDefekte(); closeAllHeaderDropdowns();">
+                <div class="header-dropdown-item" onclick="openMeldungen(); closeAllHeaderDropdowns();">
                     <span class="material-symbols-outlined">build</span> 
                     <span>Meldungen (Defekte)</span>
                 </div>
@@ -4454,18 +4454,35 @@ input.stellvertretung-input {
                     <span class="material-symbols-outlined">medical_services</span> 
                     <span>Apotheke</span>
                 </div>
-                <div class="header-dropdown-item" onclick="openMaterialwuensche(); closeAllHeaderDropdowns();">
+                <div class="header-dropdown-item" onclick="openMaterialWunsche(); closeAllHeaderDropdowns();">
                     <span class="material-symbols-outlined">inventory_2</span> 
                     <span>Materialwünsche</span>
                 </div>
             </div>
         </div>
         
-        <!-- Links als Overlay -->
-        <button class="header-nav-link" onclick="openLinksOverlay()">
-            <span class="material-symbols-outlined">link</span>
-            <span>LINKS</span>
-        </button>
+        <!-- LINKS MIT DROPDOWN-MENÜ (Mit OneNote-Links zuoberst & dynamischem Container) -->
+        <div class="header-nav-container">
+            <button class="header-nav-link" id="links-menu-btn" onclick="toggleHeaderDropdown('links-dropdown', event)">
+                <span class="material-symbols-outlined">link</span>
+                <span>LINKS</span>
+            </button>
+
+            <!-- Das Dropdown-Menü unterhalb des Links-Buttons -->
+            <div id="links-dropdown" class="header-dropdown-menu">
+                <!-- Statischer OneNote-Eintrag zuoberst -->
+                <div class="header-dropdown-item" onclick="openOneNoteSettingsModal(); closeAllHeaderDropdowns();">
+                    <span class="material-symbols-outlined">menu_book</span> 
+                    <span>OneNote-Links</span>
+                </div>
+
+                <!-- Trennlinie -->
+                <div style="height: 1px; background: #333; margin: 4px 0;"></div>
+
+                <!-- Dynamischer Container für weitere Links -->
+                <div id="links-container" style="display: flex; flex-direction: column; width: 100%;"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Rechts: News, Chat, Burger, Refresh & Profil -->
@@ -4492,10 +4509,20 @@ input.stellvertretung-input {
             <span class="material-symbols-outlined">refresh</span>
         </button>
 
-        <!-- Benutzer-Avatar / Kürzel (Hover zeigt angemeldet als kürzel) -->
-        <button class="header-icon-btn" id="header-user-avatar-container" title="Angemeldet">
-            <span class="material-symbols-outlined">run_circle</span>
-        </button>
+        <!-- BENUTZER-AVATAR / PROFIL MIT DROPDOWN -->
+        <div class="header-nav-container">
+            <button class="header-icon-btn" id="header-user-avatar-container" onclick="toggleHeaderDropdown('user-dropdown', event)" title="Angemeldet">
+                <span class="material-symbols-outlined">run_circle</span>
+            </button>
+
+            <!-- Das Dropdown-Menü unterhalb des Avatar-Buttons (nach links ausgerichtet) -->
+            <div id="user-dropdown" class="header-dropdown-menu" style="right: 0; left: auto;">
+                <div class="header-dropdown-item" onclick="triggerLogout(event); closeAllHeaderDropdowns();">
+                    <span class="material-symbols-outlined">logout</span> 
+                    <span>Abmelden</span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -4543,124 +4570,6 @@ input.stellvertretung-input {
     </div>
 </div>
 
-<!-- ============================================================
-     EXTRA-MENÜ PANEL (UNVERÄNDERT)
-     ============================================================ -->
-<div id="extra-menu" class="extra-menu-panel" style="display: none;">
-    <!-- 📅 Kategorie 1: Unterricht -->
-    <div class="menu-category">
-        <div class="menu-category-header" onclick="toggleCategory(this, event)">
-            <span>
-                <span class="material-symbols-outlined arrow-icon">expand_more</span>
-                <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 18px; margin: 0 8px;">school</span>Unterricht
-            </span>
-        </div>
-        <div class="category-submenu">
-            <div class="category-submenu-inner">
-                <div class="menu-item" onclick="startAddMode()">
-                    <span class="material-symbols-outlined">add_circle</span> Lektion hinzufügen
-                </div>
-                <div class="menu-item" onclick="oeffneVertretungsDialog()">
-                    <span class="material-symbols-outlined">swap_horiz</span> Vertretung eintragen
-                </div>
-                <div class="menu-item" onclick="openBanner()">
-                    <span class="material-symbols-outlined">campaign</span> Bannermeldungen
-                </div>
-                <div class="menu-item" onclick="openMaterialWunsche()">
-                    <span class="material-symbols-outlined">inventory_2</span> Materialwünsche
-                </div>
-                <div class="menu-item" onclick="openOneNoteSettingsModal()">
-                    <span class="material-symbols-outlined">menu_book</span> OneNote-Links
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <hr class="menu-divider">
-
-    <!-- 🤝 Kategorie 2: Team -->
-    <div class="menu-category">
-        <div class="menu-category-header" onclick="toggleCategory(this, event)">
-            <span>
-                <span class="material-symbols-outlined arrow-icon">expand_more</span>
-                <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 18px; margin: 0 8px;">group</span>Team
-            </span>
-        </div>
-        <div class="category-submenu">
-            <div class="category-submenu-inner">
-                <div class="menu-item" onclick="openTeamkasse()">
-                    <span class="material-symbols-outlined">payments</span> Teamkasse
-                </div>
-                <div class="menu-item" onclick="openStellvertretung()">
-                    <span class="material-symbols-outlined">person_search</span> Stellvertretung
-                </div>
-                <div class="menu-item" onclick="openIdeen()">
-                    <span class="material-symbols-outlined">emoji_objects</span> Ideenbrett
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <hr class="menu-divider">
-
-    <!-- 🏗️ Kategorie 3: Infrastruktur -->
-    <div class="menu-category">
-        <div class="menu-category-header" onclick="toggleCategory(this, event)">
-            <span>
-                <span class="material-symbols-outlined arrow-icon">expand_more</span>
-                <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 18px; margin: 0 8px;">apartment</span>Infrastruktur
-            </span>
-        </div>
-        <div class="category-submenu">
-            <div class="category-submenu-inner">
-                <div class="menu-item" onclick="openMeldungen()">
-                    <span class="material-symbols-outlined">build</span> Meldungen (Defekte)
-                </div>
-                <div class="menu-item" onclick="openKruecken()">
-                    <span class="material-symbols-outlined">accessible</span> Krücken
-                </div>
-                <div class="menu-item" onclick="openApotheke()">
-                    <span class="material-symbols-outlined">medical_services</span> Apotheke
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <hr class="menu-divider">
-
-    <!-- 🔗 Kategorie 4: Links -->
-    <div class="menu-category">
-        <div class="menu-category-header" onclick="toggleCategory(this, event)">
-            <span>
-                <span class="material-symbols-outlined arrow-icon">expand_more</span>
-                <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 18px; margin: 0 8px;">link</span>Links
-            </span>
-        </div>
-        <div class="category-submenu">
-            <div class="category-submenu-inner" id="links-container"></div>
-        </div>
-    </div>
-
-    <hr class="menu-divider">
-
-    <!-- 🚪 Kategorie 5: Abmelden -->
-    <div class="menu-category">
-        <div class="menu-category-header" onclick="triggerLogout(event)" style="cursor: pointer;">
-            <span>
-                <span class="material-symbols-outlined arrow-icon" style="visibility: hidden;">expand_more</span>
-                <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 18px; margin: 0 8px;">logout</span>Abmelden
-            </span>
-        </div>
-    </div>
-</div>
-
-    
-    
-  
-
-
-<!-- Dezenter Backdrop fürs Zusatzmenü -->
-<div id="menu-backdrop" class="menu-backdrop" onclick="closeExtraMenuViaBackdrop()" style="display: none;"></div>
 
 
     
