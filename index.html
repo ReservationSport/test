@@ -4388,7 +4388,7 @@ input.stellvertretung-input {
     </button>
     
     <!-- Datum-Button inklusive Wochentag (z.B. Mittwoch, 11.11.2026) -->
-    <button class="date-container" onclick="openCalendar()" style="display: flex; align-items: center; gap: 8px; padding: 0 12px;">
+      <button class="date-container" onclick="openCalendar()" style="display: flex; align-items: center; gap: 8px; padding: 0 12px;">
         <span id="date-display" style="font-size: 14px; font-weight: 500; color: #fff;">...</span>
         <span class="material-symbols-outlined" style="font-size: 18px;">calendar_today</span>
     </button>
@@ -5398,7 +5398,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         pruefeAusrichtung();
 
-        // Datum initialisieren
+        // Datum initialisieren und Wochentag im UI anzeigen
         const now = new Date();
         const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         
@@ -5441,7 +5441,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await Promise.all([
                 window.initSperrzeitenCache(),
                 window.initTeachersCache(),
-                loadOneNotePathsFromSupabase() // <--- GENAU HIER EINFÜGEN (Komma in der Zeile darüber nicht vergessen!)
+                loadOneNotePathsFromSupabase()
             ]);
         } catch (cacheErr) {
             console.warn("⚠️ Caches konnten nicht geladen werden:", cacheErr);
