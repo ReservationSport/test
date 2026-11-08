@@ -4380,9 +4380,9 @@ input.stellvertretung-input {
             <img src="icon-512.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px;">
         </a>
 
-        <!-- STUNDENPLAN MIT DROPDOWN-MENÜ -->
+        <!-- STUNDENPLAN MIT DROPDOWN-MENÜ (Startet ohne .active) -->
         <div class="header-nav-container">
-            <button class="header-nav-link active" onclick="toggleHeaderDropdown('stundenplan-dropdown', event)">
+            <button class="header-nav-link" id="stundenplan-menu-btn" onclick="toggleHeaderDropdown('stundenplan-dropdown', event)">
                 <span class="material-symbols-outlined">calendar_month</span>
                 <span>STUNDENPLAN</span>
             </button>
@@ -4458,7 +4458,6 @@ input.stellvertretung-input {
 
 <!-- Globales Backdrop-Overlay für die Kopfzeilen-Dropdowns -->
 <div id="app-backdrop" class="app-backdrop" onclick="closeAllHeaderDropdowns()"></div>
-
 
 <!-- ============================================================
      KOMPAKTE DATUMS-NAVIGATION (ERSETZT DIE ALTE TEXTZEILE)
@@ -17360,7 +17359,7 @@ document.addEventListener('click', (e) => {
     KOPFZEILE & DROPDOWN-STEUERUNG
     ============================================================ */
 
-// Aktiven Tab in der Kopfzeile umschalten
+// Aktiven Tab in der Kopfzeile umschalten (für feste Ansichten wie Unterricht, Team etc.)
 function updateHeaderActiveState(activeButtonElement) {
     document.querySelectorAll('.header-nav-link').forEach(btn => btn.classList.remove('active'));
     if (activeButtonElement) {
@@ -17377,12 +17376,12 @@ function closeAllOverlays() {
     // Auch eventuell offene Kopfzeilen-Dropdowns und Backdrop schließen
     closeAllHeaderDropdowns();
 
-    // "Stundenpläne" als aktiv markieren (Sucht nun gezielt nach dem Button mit dem Dropdown oder dem Link)
+    // "Stundenpläne" als aktiv markieren
     const stundenplanBtn = document.querySelector('#stundenplan-menu-btn') || document.querySelector('.header-nav-link'); 
     updateHeaderActiveState(stundenplanBtn);
 }
 
-// Öffnet/Schließt das spezifische Kopfzeilen-Dropdown und steuert das Backdrop
+// Öffnet/Schließt das spezifische Kopfzeilen-Dropdown und steuert die aktive Farbe nur während es offen ist
 function toggleHeaderDropdown(dropdownId, event) {
     event.stopPropagation();
     const dropdown = document.getElementById(dropdownId);
@@ -17392,27 +17391,33 @@ function toggleHeaderDropdown(dropdownId, event) {
 
     const isOpen = dropdown.style.display === 'flex';
 
-    // Erst alle anderen Dropdowns schließen
+    // Erst alle anderen Dropdowns schließen & aktive Zustände zurücksetzen
     closeAllHeaderDropdowns();
 
     if (!isOpen) {
         dropdown.style.display = 'flex';
         if (backdrop) backdrop.style.display = 'block';
         
-        // Den Button selbst als aktiv markieren
+        // Button NUR JETZT (solange das Menü offen ist) als aktiv markieren
         const navContainer = event.currentTarget.closest('.header-nav-container');
         if (navContainer) {
             const btn = navContainer.querySelector('.header-nav-link');
-            if (btn) updateHeaderActiveState(btn);
+            if (btn) btn.classList.add('active');
         }
     }
 }
 
-// Schließt alle Kopfzeilen-Dropdowns und das Hintergrund-Overlay
+// Schließt alle Kopfzeilen-Dropdowns, das Backdrop und entfernt den aktiven Zustand von den Buttons
 function closeAllHeaderDropdowns() {
     document.querySelectorAll('.header-dropdown-menu').forEach(menu => {
         menu.style.display = 'none';
     });
+    
+    // Aktiven Zustand von allen Dropdown-Buttons in der Kopfzeile entfernen
+    document.querySelectorAll('.header-nav-container .header-nav-link').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
     const backdrop = document.getElementById('app-backdrop');
     if (backdrop) backdrop.style.display = 'none';
 }
