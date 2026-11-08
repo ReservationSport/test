@@ -107,42 +107,53 @@ body {
 
 
 /* ============================================================
-   2. NAVIGATION & STICKY CONTROLS (IN DIE TABELLE INTEGRIERT)
+   2. NAVIGATION & STICKY CONTROLS (Zentriert & in Tabelle integriert)
    ============================================================ */
 .date-control {
     display: flex;
-    justify-content: space-between;
+    justify-content: center; /* Hält alle Navigationsbuttons zusammen in der Mitte */
     align-items: center;
     gap: 8px;
     width: 100%;
     max-width: 1000px;
-    margin: 0 auto; /* Kein Abstand nach unten, schließt direkt an den Plan an */
-    padding: 8px 12px;
-    background: #262626;
-    border: 1px solid #333;
-    /* Verschmelzung: Oben abgerundet, unten eckig, damit es exakt auf dem Grid sitzt */
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-    border-bottom: 1px solid #2c2c2c; /* Dezente Trennlinie zum Plan */
+    margin: 0 auto;
+    margin-bottom: 2px; /* Exakt derselbe Abstand (gap: 2px) wie im Lektionen-Grid */
+    padding: 6px 12px;
+    background: #333; /* Gleiche Farbe wie die Zeit-Boxen */
+    border: 1px solid #444; /* Gleicher Rand wie die Boxen */
+    border-radius: 0; /* Komplett eckige Ecken */
     position: sticky;
     top: 0;
     z-index: 50;
     box-sizing: border-box;
 }
 
-.nav-section { display: flex; align-items: center; gap: 8px; }
-.nav-left { flex: 1; justify-content: flex-start; }
-.nav-center { flex: 2; justify-content: center; gap: 6px; }
-.nav-right { flex: 1; justify-content: flex-end; }
-.nav-group { display: flex; gap: 5px; }
+.nav-section { 
+    display: flex; 
+    align-items: center; 
+    gap: 6px; 
+}
+
+/* Da alles zentriert ist, wirken hier flexible Breiten nicht mehr störend */
+.nav-left, .nav-center, .nav-right { 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.nav-group { 
+    display: flex; 
+    gap: 5px; 
+}
 
 /* Buttons & Container - Clean & Uniform */
 .nav-btn, .refresh-btn, .date-container { 
-    height: 40px; 
+    height: 38px; 
     background: #262626; 
-    border: 1px solid #333; 
+    border: 1px solid #444; 
     color: #e67e22;
-    border-radius: 8px; 
+    border-radius: 4px; /* Eckig / dezente Ecken passend zum Grid */
     box-sizing: border-box;
     display: flex;
     align-items: center;
@@ -151,9 +162,9 @@ body {
     cursor: pointer;
 }
 
-.nav-btn, .refresh-btn { width: 40px; }
+.nav-btn, .refresh-btn { width: 38px; }
 .nav-btn:hover, .refresh-btn:hover, .date-container:hover { 
-    background: #2d2d2d; 
+    background: #333; 
     border-color: #e67e22; 
 }
 
@@ -199,7 +210,7 @@ body {
     padding: 0 8px;
     gap: 5px;
     cursor: pointer;
-    height: 40px;
+    height: 38px;
     position: relative;
     transition: all 0.2s;
 }
