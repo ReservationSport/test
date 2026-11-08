@@ -4387,12 +4387,13 @@ input.stellvertretung-input {
         <span class="material-symbols-outlined">home</span>
     </button>
     
-    <!-- Datum-Button inklusive Wochentag (z.B. Mittwoch, 11.11.2026) -->
-      <button class="date-container" onclick="openCalendar()" style="display: flex; align-items: center; gap: 8px; padding: 0 12px;">
-        <span id="date-display" style="font-size: 14px; font-weight: 500; color: #fff;">...</span>
-        <span class="material-symbols-outlined" style="font-size: 18px;">calendar_today</span>
-    </button>
-    <input type="date" id="datePicker" onchange="changeDayAndLoad(this.value); updateDateText(this.value)" style="display: none;">
+ <!-- Datum-Button inklusive Wochentag -->
+<button class="date-container" onclick="openCalendar()" style="display: flex; align-items: center; gap: 8px; padding: 0 12px; cursor: pointer;">
+    <span id="date-display" style="font-size: 14px; font-weight: 500; color: #fff;">...</span>
+    <span class="material-symbols-outlined" style="font-size: 18px; color: #e67e22;">calendar_today</span>
+</button>
+<!-- Das eigentliche Date-Input ist unsichtbar im Hintergrund und wird beim Klick auf den Button getriggert -->
+<input type="date" id="datePicker" onchange="changeDayAndLoad(this.value); updateDateText(this.value)" style="display: none;">
     
     <!-- 1 Tag vor -->
     <button id="next-day" class="nav-btn" onclick="changeDate(1)" title="1 Tag vor">
@@ -6517,8 +6518,8 @@ function updateNavButtons() {
 }
 
 /* ============================================================
-   KALENDER MODAL LOGIK
-   ============================================================ */
+    KALENDER MODAL LOGIK
+    ============================================================ */
 
 window.openCalendar = function(offset = 0) {
     const modal = document.getElementById('calendar-modal');
@@ -6579,6 +6580,7 @@ window.openCalendar = function(offset = 0) {
         } else {
             dayBtn.onclick = () => {
                 dp.value = dateStr;
+                // Sofort den Text im Header inklusive Wochentag aktualisieren!
                 if (typeof updateDateText === 'function') updateDateText(dateStr);
                 if (typeof updateNavButtons === 'function') updateNavButtons();
                 if (typeof changeDayAndLoad === 'function') changeDayAndLoad(dateStr, 'day');
@@ -6587,7 +6589,7 @@ window.openCalendar = function(offset = 0) {
         }
         grid.appendChild(dayBtn);
     }
-};       
+};
       
 window.closeCalendar = function() {
     const modal = document.getElementById('calendar-modal');
@@ -6595,16 +6597,22 @@ window.closeCalendar = function() {
 };
 
 /**
- * Aktualisiert den Text im Datum-Button-Container
+ * Aktualisiert den Text im Datum-Button-Container inklusive Wochentag
  */
 window.updateDateText = (dateValue) => {
     const display = document.getElementById('date-display');
     if (display && dateValue) {
-        const [y, m, d] = dateValue.split('-');
-        display.innerText = `${d}.${m}.${y}`;
+        const parts = dateValue.split('-');
+        if (parts.length !== 3) return;
+        
+        // Datumsobjekt erzeugen (Jahr, Monat-1, Tag)
+        const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        
+        // Formatierung mit langem Wochentag (z.B. "Montag, 09.11.2026")
+        const options = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' };
+        display.innerText = dateObj.toLocaleDateString('de-DE', options);
     }
 };
-
     
 
 /* ============================================================
