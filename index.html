@@ -4387,8 +4387,13 @@ input.stellvertretung-input {
                 <span>STUNDENPLAN</span>
             </button>
 
+            
             <!-- Das Dropdown-Menü unterhalb des Stundenplan-Buttons -->
             <div id="stundenplan-dropdown" class="header-dropdown-menu">
+                 <div class="header-dropdown-item" onclick="openStellvertretung(); closeAllHeaderDropdowns();">
+                    <span class="material-symbols-outlined">person_search</span> 
+                    <span>Stellvertretung sucher</span>
+                </div>
                 <div class="header-dropdown-item" onclick="oeffneVertretungsDialog(); closeAllHeaderDropdowns();">
                     <span class="material-symbols-outlined">swap_horiz</span> 
                     <span>Stellvertretung eintragen</span>
