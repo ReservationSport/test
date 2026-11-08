@@ -107,27 +107,30 @@ body {
 
 
 /* ============================================================
-   2. NAVIGATION & STICKY CONTROLS (CLEAN LOOK - FINAL)
+   2. NAVIGATION & STICKY CONTROLS (IN DIE TABELLE INTEGRIERT)
    ============================================================ */
 .date-control {
     display: flex;
-    justify-content: center; /* Zentriert den gesamten Datums-Block */
+    justify-content: space-between;
     align-items: center;
-    gap: 8px; /* Abstand zwischen den Elementen */
+    gap: 8px;
     width: 100%;
     max-width: 1000px;
-    margin: 0 auto 10px auto;
+    margin: 0 auto; /* Kein Abstand nach unten, schließt direkt an den Plan an */
     padding: 8px 12px;
     background: #262626;
     border: 1px solid #333;
-    border-radius: 10px;
+    /* Verschmelzung: Oben abgerundet, unten eckig, damit es exakt auf dem Grid sitzt */
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom: 1px solid #2c2c2c; /* Dezente Trennlinie zum Plan */
     position: sticky;
     top: 0;
     z-index: 50;
     box-sizing: border-box;
 }
 
-.nav-section { display: flex; align-items: center; gap: 8px; } /* Gap leicht reduziert für mehr Platz */
+.nav-section { display: flex; align-items: center; gap: 8px; }
 .nav-left { flex: 1; justify-content: flex-start; }
 .nav-center { flex: 2; justify-content: center; gap: 6px; }
 .nav-right { flex: 1; justify-content: flex-end; }
@@ -154,12 +157,12 @@ body {
     border-color: #e67e22; 
 }
 
-/* Spezielles Styling für den neuen Datum-Button */
+/* Spezielles Styling für den Datum-Button */
 .date-container {
-    padding: 0 10px; /* Reduziert für mobile Ansicht */
+    padding: 0 10px;
     gap: 6px;
     font-family: inherit;
-    font-size: 13px; /* Etwas kleiner für mehr Platz */
+    font-size: 13px;
 }
 
 .date-container span:first-child {
@@ -172,8 +175,8 @@ body {
 .refresh-btn .material-symbols-outlined,
 .date-container .material-symbols-outlined,
 .news-btn-premium .material-symbols-outlined,
-.chat-btn-premium .material-symbols-outlined { /* Chat Icon hinzugefügt */
-    font-size: 20px; /* Icon-Grösse minimal verkleinert für besseren Flow auf Mobile */
+.chat-btn-premium .material-symbols-outlined {
+    font-size: 20px;
     color: #e67e22;
     margin: 0;
     transition: color 0.2s;
@@ -185,7 +188,7 @@ body {
     pointer-events: none; 
 }
 
-/* News & Chat Button Premium Style - Einheitlich & Platzsparend */
+/* News & Chat Button Premium Style */
 .news-btn-premium, .chat-btn-premium {
     display: flex;
     align-items: center;
@@ -193,8 +196,8 @@ body {
     background: #262626;
     border: 1px solid #333;
     border-radius: 8px;
-    padding: 0 8px; /* Padding reduziert, macht den Button schmaler */
-    gap: 5px; /* Abstand zwischen Icon und Text */
+    padding: 0 8px;
+    gap: 5px;
     cursor: pointer;
     height: 40px;
     position: relative;
@@ -207,10 +210,10 @@ body {
 
 .news-btn-premium .btn-text, .chat-btn-premium .btn-text {
     color: #eee; 
-    font-size: 12px; /* Schrift etwas kleiner, um Breite zu sparen */
-    letter-spacing: 0.5px; /* Weniger Abstand zwischen den Buchstaben */
+    font-size: 12px;
+    letter-spacing: 0.5px;
     font-weight: 400;
-    margin: 0; /* Margin entfernt, da wir 'gap' auf dem Container nutzen */
+    margin: 0;
 }
 
 .news-btn-premium .badge, .chat-btn-premium .badge {
@@ -4104,7 +4107,7 @@ input.stellvertretung-input {
     background: #262626;
     border: 1px solid #333;
     border-radius: 10px;
-    padding: 8px 12px;
+    padding: 5px 12px;
     box-sizing: border-box;
     z-index: 60;
     position: relative; /* Wichtig, falls Container absolute Elemente beinhalten */
