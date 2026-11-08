@@ -4292,12 +4292,12 @@ input.stellvertretung-input {
 
 
 <!-- ============================================================
-     ANGEPASSTE KOPFZEILE (ALS OVERLAY-TRIGGER)
+     1. ZEILE: HAUPT-KOPFZEILE (LOGO, NAVIGATION & PROFIL)
      ============================================================ -->
 <div class="app-header">
     <!-- Links: Logo & Hauptmenü-Links -->
     <div class="header-left">
-        <!-- Logo mit icon-512.png, das bei Klick die Seite aktualisiert -->
+        <!-- Logo mit icon-512.png (Aktualisiert bei Klick die Seite) -->
         <a href="#" class="app-logo" onclick="location.reload(); return false;" title="Seite aktualisieren">
             <img src="icon-512.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px;">
         </a>
@@ -4333,50 +4333,43 @@ input.stellvertretung-input {
         </button>
     </div>
 
-    <!-- Rechts: News, Chat, Refresh & Profil -->
+    <!-- Rechts: News, Chat, Burger, Refresh & Profil -->
     <div class="header-right">
-        <!-- News -->
-        <button class="header-icon-btn" onclick="refreshAndShowNews()" title="Neuigkeiten anzeigen">
+        <!-- News-Button -->
+        <button class="header-icon-btn" id="news-btn-container" onclick="refreshAndShowNews()" title="Neuigkeiten anzeigen" style="display: none;">
             <span class="material-symbols-outlined">notifications</span>
+            <div id="news-dot" class="badge" style="display: none;"></div>
         </button>
         
         <!-- Chat Schnellzugriff -->
-        <button class="header-icon-btn" onclick="openChat()" title="Chat öffnen">
-            <span class="material-symbols-outlined">chat</span>
-        </button>
-
-       <!-- Benutzer-Avatar / Kürzel -->
-        <button class="header-icon-btn" id="header-user-avatar-container" onclick="/* Optional: Profil-Menü öffnen */" title="Angemeldet">
-            <span class="material-symbols-outlined">run_circle</span>
-        </button>
-
-    </div>
-</div>
-
-    
-    
-  <div class="date-control">
-    <div class="nav-section nav-left">
-    <!-- News-Button -->
-    <div id="news-btn-container" style="display: none;">
-        <div class="news-btn-premium" onclick="refreshAndShowNews()">
-            <span class="btn-text">NEWS</span>
-            <span class="material-symbols-outlined bell-icon">notifications</span>
-            <div id="news-dot" class="badge" style="display: none;"></div>
-        </div>
-    </div>
-
-    <!-- Chat-Button (jetzt exakt gleich aufgebaut: Text zuerst, Icon rechts) -->
-    <div id="chat-btn-container" style="display: none;">
-        <div class="chat-btn-premium" onclick="openChat()">
-            <span class="btn-text">CHAT</span>
+        <button class="header-icon-btn" id="chat-btn-container" onclick="openChat()" title="Chat öffnen" style="display: none;">
             <span class="material-symbols-outlined">chat</span>
             <div id="chat-dot" class="badge" style="display: none;"></div>
-        </div>
+        </button>
+
+        <!-- Zusätzliches Menü (Burger) -->
+        <button class="header-icon-btn" id="menu-trigger" onclick="toggleExtraMenu(event)" title="Mehr Optionen">
+            <span class="material-symbols-outlined">menu</span>
+        </button>
+
+        <!-- Aktualisieren / Refresh -->
+        <button class="header-icon-btn" onclick="changeDayAndLoad(document.getElementById('datePicker').value, 'refresh')" title="Aktualisieren">
+            <span class="material-symbols-outlined">refresh</span>
+        </button>
+
+        <!-- Benutzer-Avatar / Kürzel (Hover zeigt angemeldet als kürzel) -->
+        <button class="header-icon-btn" id="header-user-avatar-container" title="Angemeldet">
+            <span class="material-symbols-outlined">run_circle</span>
+        </button>
     </div>
 </div>
 
-    <div class="nav-section nav-center">
+
+<!-- ============================================================
+     2. ZEILE: DATUMS-NAVIGATION (MIT WOCHENTAG)
+     ============================================================ -->
+<div class="date-control">
+    <div class="nav-section nav-left">
         <div class="nav-group">
             <button class="nav-btn" onclick="changeDate(-7)" title="1 Woche zurück">
                 <span class="material-symbols-outlined">keyboard_double_arrow_left</span>
@@ -4385,17 +4378,22 @@ input.stellvertretung-input {
                 <span class="material-symbols-outlined">chevron_left</span>
             </button>
         </div>
-        
+    </div>
+
+    <div class="nav-section nav-center" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
         <button class="nav-btn" onclick="goToToday()" title="Heute">
             <span class="material-symbols-outlined">home</span>
         </button>
         
+        <!-- Datum-Button inklusive Wochentag -->
         <button class="date-container" onclick="openCalendar()">
             <span id="date-display">...</span>
             <span class="material-symbols-outlined">calendar_today</span>
         </button>
         <input type="date" id="datePicker" onchange="changeDayAndLoad(this.value); updateDateText(this.value)" style="display: none;">
-        
+    </div>
+
+    <div class="nav-section nav-right" style="display: flex; justify-content: flex-end;">
         <div class="nav-group">
             <button id="next-day" class="nav-btn" onclick="changeDate(1)" title="1 Tag vor">
                 <span class="material-symbols-outlined">chevron_right</span>
@@ -4405,23 +4403,13 @@ input.stellvertretung-input {
             </button>
         </div>
     </div>
-
-    <div class="nav-section nav-right">
-        <button class="refresh-btn" id="menu-trigger" onclick="toggleExtraMenu(event)" title="Mehr Optionen">
-            <span class="material-symbols-outlined">menu</span>
-        </button>
-
-        <button class="refresh-btn" onclick="changeDayAndLoad(document.getElementById('datePicker').value, 'refresh')" title="Aktualisieren">
-            <span class="material-symbols-outlined">refresh</span>
-        </button>
-    </div>
 </div>
 
 
-
-    
+<!-- ============================================================
+     EXTRA-MENÜ PANEL (UNVERÄNDERT)
+     ============================================================ -->
 <div id="extra-menu" class="extra-menu-panel" style="display: none;">
-    
     <!-- 📅 Kategorie 1: Unterricht -->
     <div class="menu-category">
         <div class="menu-category-header" onclick="toggleCategory(this, event)">
@@ -4444,7 +4432,6 @@ input.stellvertretung-input {
                 <div class="menu-item" onclick="openMaterialWunsche()">
                     <span class="material-symbols-outlined">inventory_2</span> Materialwünsche
                 </div>
-                <!-- 🆕 NEU: OneNote-Einstellungen aufrufen -->
                 <div class="menu-item" onclick="openOneNoteSettingsModal()">
                     <span class="material-symbols-outlined">menu_book</span> OneNote-Links
                 </div>
@@ -4504,7 +4491,7 @@ input.stellvertretung-input {
 
     <hr class="menu-divider">
 
-    <!-- 🔗 Kategorie 4: Links (Lädt die Links dynamisch direkt ins Untermenü) -->
+    <!-- 🔗 Kategorie 4: Links -->
     <div class="menu-category">
         <div class="menu-category-header" onclick="toggleCategory(this, event)">
             <span>
@@ -4513,9 +4500,7 @@ input.stellvertretung-input {
             </span>
         </div>
         <div class="category-submenu">
-            <div class="category-submenu-inner" id="links-container">
-                <!-- Deine Links werden hier dynamisch per JavaScript eingefügt -->
-            </div>
+            <div class="category-submenu-inner" id="links-container"></div>
         </div>
     </div>
 
@@ -4525,14 +4510,16 @@ input.stellvertretung-input {
     <div class="menu-category">
         <div class="menu-category-header" onclick="triggerLogout(event)" style="cursor: pointer;">
             <span>
-                <!-- Unsichtbarer Platzhalter, damit es bündig mit den Pfeilen der anderen Kategorien ausgerichtet ist -->
                 <span class="material-symbols-outlined arrow-icon" style="visibility: hidden;">expand_more</span>
                 <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 18px; margin: 0 8px;">logout</span>Abmelden
             </span>
         </div>
     </div>
-
 </div>
+
+    
+    
+  
 
 
 <!-- Dezenter Backdrop fürs Zusatzmenü -->
@@ -17310,6 +17297,22 @@ function openRoomPlanningOverlay() {
 }
 
     
+// 1. Datumsauswahl-Text aktualisieren (inklusive Wochentag)
+function updateDateText(dateString) {
+    const displayEl = document.getElementById('date-display');
+    if (!displayEl) return;
+
+    const parts = dateString.split('-');
+    if (parts.length !== 3) return;
+    
+    const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    
+    // Formatiert das Datum mit ausgeschriebenem Wochentag
+    const options = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' };
+    displayEl.innerText = dateObj.toLocaleDateString('de-DE', options);
+}
+
+// 2. Benutzer-Tooltip für das run_circle-Icon aktualisieren (Kleinbuchstaben, keine Klammern)
 function updateHeaderUserTooltip() {
     let rawUserKuerzel = "";
     if (typeof userKuerzel === 'string' && userKuerzel.trim() !== "") {
@@ -17321,10 +17324,8 @@ function updateHeaderUserTooltip() {
         rawUserKuerzel = el ? (el.value || "gast") : "gast";
     }
     
-    // In Kleinbuchstaben umwandeln ohne Klammern
     const cleanKuerzel = String(rawUserKuerzel).trim().toLowerCase();
     
-    // Sucht den Button über die ID und setzt das Tooltip-Attribut
     const avatarBtn = document.getElementById('header-user-avatar-container');
     if (avatarBtn) {
         avatarBtn.title = `angemeldet als ${cleanKuerzel}`;
@@ -17332,7 +17333,14 @@ function updateHeaderUserTooltip() {
 }
 
 // Beim Laden der Seite initialisieren
-window.addEventListener('DOMContentLoaded', updateHeaderUserTooltip);
+window.addEventListener('DOMContentLoaded', () => {
+    updateHeaderUserTooltip();
+    // Falls ein initiales Datum im DatePicker steht, dieses auch direkt formatieren lassen
+    const dp = document.getElementById('datePicker');
+    if (dp && dp.value) {
+        updateDateText(dp.value);
+    }
+});
 
     
     
