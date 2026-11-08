@@ -6222,13 +6222,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
 
 /* ============================================================
-    ZENTRALE EVENT-DELEGATION (Inkl. OneNote master_db & teachers Integration)
-    ============================================================ */
+   ZENTRALE EVENT-DELEGATION (Inkl. OneNote master_db & teachers Integration)
+   ============================================================ */
+
+// Globaler Timeout für Einfach-/Doppelklick-Erkennung
+let clickTimeout = null; 
+
 const planContainer = document.getElementById('plan-container');
 
 if (planContainer) {
-    let clickTimeout = null;
-
     // 1. RECHTSKLICK: Kopieren
     planContainer.addEventListener('contextmenu', function(e) {
         if (window.moveMode) return;
@@ -6296,22 +6298,22 @@ if (planContainer) {
             }
         }, 250);
     });
+}
 
-    // 3. DOPPELKLICK: Entweder allgemeines Notizbuch (auf freier Fläche der Datumszeile) oder Klassen-Link (auf Box)
+// 3. DOPPELKLICK: Globaler Listener für Datumszeile (.date-control) & Unterrichtsboxen
 document.addEventListener('dblclick', async function(e) {
     if (window.moveMode) {
         e.stopPropagation();
         return;
     }
 
-    // WICHTIG: Wenn auf einen Button, Link oder ein Input doppelt geklickt wird, 
-    // soll das Notizbuch NICHT aufgehen, damit Buttons/Login/Kalender normal funktionieren!
-    if (e.target.closest('button, input, a, .nav-btn, .refresh-btn, .date-container, .header-icon-btn, user-avatar-btn')) {
+    // WICHTIG: Wenn auf Buttons, Inputs, Links oder Steuerelemente geklickt wird -> sofort abbrechen!
+    if (e.target.closest('button, input, a, .nav-btn, .refresh-btn, .date-container, .header-icon-btn, .user-avatar-btn')) {
         return;
     }
 
-    // Den wartenden Einfachklick-Timer löschen (falls vorhanden)
-    if (typeof clickTimeout !== 'undefined' && clickTimeout) {
+    // Den wartenden Einfachklick-Timer löschen
+    if (clickTimeout) {
         clearTimeout(clickTimeout);
         clickTimeout = null;
     }
@@ -6369,8 +6371,8 @@ document.addEventListener('dblclick', async function(e) {
     if (!box) return;
 
     // Prüfen, ob der Event innerhalb des planContainers passiert ist
-    const planContainer = document.getElementById('plan-container') || document.querySelector('.grid');
-    if (planContainer && !planContainer.contains(box)) return;
+    const activePlanContainer = document.getElementById('plan-container') || document.querySelector('.grid');
+    if (activePlanContainer && !activePlanContainer.contains(box)) return;
 
     const isMine = box.classList.contains('is-mine');
     const isStv = box.classList.contains('is-stv');
@@ -6379,7 +6381,7 @@ document.addEventListener('dblclick', async function(e) {
     // Wenn es nicht deine Box ist -> Abbrechen!
     if (!canEdit) return;
 
-    e.stopPropagation();
+    e.stopPropagation(); // Verhindert unerwünschte Nebeneffekte
 
     // 1. Klasse aus der Box auslesen
     const klasse = box.querySelector('.klasse-label')?.innerText.trim() || "";
