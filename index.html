@@ -253,7 +253,7 @@ body {
 }
 
 
-/* 2. Datumszeile & Navigations-Controls (Zentriert, eckig, im Zeit-Boxen-Look) */
+/* 2. Datumszeile & Navigations-Controls (Mit Abstand zur Kopfzeile) */
 .date-control {
     display: flex;
     justify-content: center; 
@@ -262,16 +262,20 @@ body {
     width: 100%;
     max-width: 1000px;
     margin: 0 auto;
-    margin-bottom: 2px; /* Exakter Abstand zum Lektionen-Grid */
-    padding: 6px 12px;
     
-    background-color: #333333 !important; /* Exakter Ton wie die Zeit-Boxen */
+    /* NEU: Erzeugt den gewünschten Abstand nach oben zur Kopfzeile */
+    margin-top: 10px; 
+    margin-bottom: 2px; /* Exakter Abstand nach unten zum Lektionen-Grid */
+    
+    padding: 6px 12px;
+    background-color: #333333 !important; 
     border: 1px solid #444; 
-    border-radius: 0; /* Eckige Ecken für den nahtlosen Look */
+    border-radius: 0; 
     box-sizing: border-box;
     
     position: sticky;
-    top: 58px; /* Klebt direkt unter der Haupt-Kopfzeile beim Scrollen */
+    /* Der top-Wert muss sich um den neuen Abstand (10px) erhöhen, damit sie korrekt einrastet */
+    top: 68px; 
     z-index: 55; 
 }
 
