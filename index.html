@@ -111,21 +111,25 @@ body {
    ============================================================ */
 .date-control {
     display: flex;
-    justify-content: center; /* Hält alle Navigationsbuttons zusammen in der Mitte */
+    justify-content: center; 
     align-items: center;
     gap: 8px;
     width: 100%;
     max-width: 1000px;
     margin: 0 auto;
-    margin-bottom: 2px; /* Exakt derselbe Abstand (gap: 2px) wie im Lektionen-Grid */
+    margin-bottom: 2px; 
     padding: 6px 12px;
-    background: #333; /* Gleiche Farbe wie die Zeit-Boxen */
-    border: 1px solid #444; /* Gleicher Rand wie die Boxen */
-    border-radius: 0; /* Komplett eckige Ecken */
-    position: sticky;
-    top: 0;
-    z-index: 50;
+    background: #333; 
+    border: 1px solid #444; 
+    border-radius: 0; 
     box-sizing: border-box;
+    
+    /* NEU: Fixiert die Datumszeile ebenfalls beim Scrollen */
+    position: sticky;
+    /* Der Wert muss ca. der Höhe der Kopfzeile + oberem Abstand entsprechen, 
+       damit sie nahtlos unter der Kopfzeile einrastet */
+    top: 65px; 
+    z-index: 55; /* Knapp unter der Kopfzeile (60), aber über dem Inhalt */
 }
 
 .nav-section { 
@@ -4114,14 +4118,17 @@ input.stellvertretung-input {
     align-items: center;
     width: 100%;
     max-width: 1000px;
-    margin: 0 auto 10px auto; /* Abstand nach unten zur Datums-Leiste */
+    margin: 0 auto 10px auto; 
     background: #262626;
     border: 1px solid #333;
     border-radius: 10px;
-    padding: 5px 12px;
+    padding: 8px 12px;
     box-sizing: border-box;
     z-index: 60;
-    position: relative; /* Wichtig, falls Container absolute Elemente beinhalten */
+    
+    /* NEU: Fixiert die Kopfzeile oben beim Scrollen */
+    position: sticky;
+    top: 10px; /* Kleiner Abstand zum oberen Bildschirmrand (oder 0, falls direkt am Rand) */
 }
 
 .header-left, .header-center, .header-right {
