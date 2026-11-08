@@ -96,12 +96,16 @@ body {
 }
 
 /* Das Haupt-Grid */
-#plan-container, .grid { 
-    display: grid; 
-    grid-template-columns: 120px repeat(5, 1fr); 
-    gap: 2px; 
-    max-width: 1000px; 
+#plan-container, .grid {  
+    display: grid;  
+    grid-template-columns: 120px repeat(5, 1fr);  
+    gap: 2px;  
+    max-width: 1000px;  
     margin: auto;
+    
+    /* NEU: Schafft oben exakt den Platz für die fixierte Kopf- und Datumszeile */
+    margin-top: 130px !important; 
+    
     pointer-events: auto;
 }
 
