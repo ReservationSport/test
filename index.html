@@ -111,16 +111,20 @@ body {
    ============================================================ */
 .date-control {
     display: flex;
-    justify-content: space-between;
+    justify-content: center; /* Zentriert den gesamten Datums-Block */
     align-items: center;
+    gap: 8px; /* Abstand zwischen den Elementen */
     width: 100%;
     max-width: 1000px;
-    margin: 0 auto;
-    padding: 10px 0;
-    background: #1a1a1a;
+    margin: 0 auto 10px auto;
+    padding: 8px 12px;
+    background: #262626;
+    border: 1px solid #333;
+    border-radius: 10px;
     position: sticky;
     top: 0;
     z-index: 50;
+    box-sizing: border-box;
 }
 
 .nav-section { display: flex; align-items: center; gap: 8px; } /* Gap leicht reduziert für mehr Platz */
@@ -4366,45 +4370,39 @@ input.stellvertretung-input {
 
 
 <!-- ============================================================
-     2. ZEILE: DATUMS-NAVIGATION (MIT WOCHENTAG)
+     KOMPAKTE DATUMS-NAVIGATION (ERSETZT DIE ALTE TEXTZEILE)
      ============================================================ -->
 <div class="date-control">
-    <div class="nav-section nav-left">
-        <div class="nav-group">
-            <button class="nav-btn" onclick="changeDate(-7)" title="1 Woche zurück">
-                <span class="material-symbols-outlined">keyboard_double_arrow_left</span>
-            </button>
-            <button id="prev-day" class="nav-btn" onclick="changeDate(-1)" title="1 Tag zurück">
-                <span class="material-symbols-outlined">chevron_left</span>
-            </button>
-        </div>
-    </div>
-
-    <div class="nav-section nav-center" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-        <button class="nav-btn" onclick="goToToday()" title="Heute">
-            <span class="material-symbols-outlined">home</span>
-        </button>
-        
-        <!-- Datum-Button inklusive Wochentag -->
-        <button class="date-container" onclick="openCalendar()">
-            <span id="date-display">...</span>
-            <span class="material-symbols-outlined">calendar_today</span>
-        </button>
-        <input type="date" id="datePicker" onchange="changeDayAndLoad(this.value); updateDateText(this.value)" style="display: none;">
-    </div>
-
-    <div class="nav-section nav-right" style="display: flex; justify-content: flex-end;">
-        <div class="nav-group">
-            <button id="next-day" class="nav-btn" onclick="changeDate(1)" title="1 Tag vor">
-                <span class="material-symbols-outlined">chevron_right</span>
-            </button>
-            <button class="nav-btn" onclick="changeDate(7)" title="1 Woche vor">
-                <span class="material-symbols-outlined">keyboard_double_arrow_right</span>
-            </button>
-        </div>
-    </div>
+    <!-- 1 Woche zurück -->
+    <button class="nav-btn" onclick="changeDate(-7)" title="1 Woche zurück">
+        <span class="material-symbols-outlined">keyboard_double_arrow_left</span>
+    </button>
+    <!-- 1 Tag zurück -->
+    <button id="prev-day" class="nav-btn" onclick="changeDate(-1)" title="1 Tag zurück">
+        <span class="material-symbols-outlined">chevron_left</span>
+    </button>
+    
+    <!-- Heute-Button -->
+    <button class="nav-btn" onclick="goToToday()" title="Heute">
+        <span class="material-symbols-outlined">home</span>
+    </button>
+    
+    <!-- Datum-Button inklusive Wochentag (z.B. Mittwoch, 11.11.2026) -->
+    <button class="date-container" onclick="openCalendar()" style="display: flex; align-items: center; gap: 8px; padding: 0 12px;">
+        <span id="date-display" style="font-size: 14px; font-weight: 500; color: #fff;">...</span>
+        <span class="material-symbols-outlined" style="font-size: 18px;">calendar_today</span>
+    </button>
+    <input type="date" id="datePicker" onchange="changeDayAndLoad(this.value); updateDateText(this.value)" style="display: none;">
+    
+    <!-- 1 Tag vor -->
+    <button id="next-day" class="nav-btn" onclick="changeDate(1)" title="1 Tag vor">
+        <span class="material-symbols-outlined">chevron_right</span>
+    </button>
+    <!-- 1 Woche vor -->
+    <button class="nav-btn" onclick="changeDate(7)" title="1 Woche vor">
+        <span class="material-symbols-outlined">keyboard_double_arrow_right</span>
+    </button>
 </div>
-
 
 <!-- ============================================================
      EXTRA-MENÜ PANEL (UNVERÄNDERT)
@@ -6678,10 +6676,9 @@ window.loadPlan = async function(isExplicitUserAction = false) {
 
     try {
         const [y, m, d] = dateVal.split('-');
-        const dbFormatDate = `${d}.${m}.${y}`; // Für die Header-Anzeige und die Map
+        const dbFormatDate = `${d}.${m}.${y}`; // Für die Map
 
         // --- SPERRZEITEN-PRÜFUNG AUS DEM LOKALEN CACHE ---
-        // Prüft nun korrekt mit dem DD.MM.YYYY-Format der sperrzeitenMap
         const sperrzeitGrund = window.sperrzeitenMap && window.sperrzeitenMap[dbFormatDate] ? window.sperrzeitenMap[dbFormatDate] : "";
 
         if (sperrzeitGrund) {
@@ -6844,7 +6841,8 @@ window.loadPlan = async function(isExplicitUserAction = false) {
         
         const zeiten = ["07:15 - 08:00", "08:05 - 08:50", "08:55 - 09:40", "10:00 - 10:45", "10:50 - 11:35", "11:40 - 12:25", "12:50 - 13:35", "13:40 - 14:25", "14:30 - 15:15", "15:35 - 16:20", "16:25 - 17:10", "17:15 - 18:00"];
 
-        let html = `<div class="box header-row" style="grid-column: span 6;"><span>${aktuellerWochentag}, ${dbFormatDate}</span></div>`;
+        // Alte Überschrifts-Zeile entfernt (startet direkt leer)
+        let html = "";
 
         zeiten.forEach((zeitStr, rowIndex) => {
             if (rowIndex + 1 === 4 || rowIndex + 1 === 10) html += `<div class="divider-thin" style="grid-column: span 6;"></div>`;
@@ -6926,6 +6924,11 @@ window.loadPlan = async function(isExplicitUserAction = false) {
         });
         
         container.innerHTML = html;
+
+        // Aktualisiert den Text im neuen Datums-Button inklusive Wochentag
+        if (typeof updateDateText === 'function') {
+            updateDateText(dateVal);
+        }
 
         container.querySelectorAll('.box:not(.zeit-box):not(.header-row)').forEach(box => {
             const slot = box.getAttribute('data-slot');
