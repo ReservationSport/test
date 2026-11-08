@@ -126,8 +126,12 @@ body {
     padding: 8px 12px;
     box-sizing: border-box;
     z-index: 60;
-    position: sticky;
+    
+    /* ÄNDERUNG VON STICKY ZU FIXED */
+    position: fixed;
     top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .header-left, .header-center, .header-right {
@@ -262,20 +266,19 @@ body {
     width: 100%;
     max-width: 1000px;
     margin: 0 auto;
-    
-    /* NEU: Erzeugt den gewünschten Abstand nach oben zur Kopfzeile */
     margin-top: 10px; 
-    margin-bottom: 2px; /* Exakter Abstand nach unten zum Lektionen-Grid */
-    
+    margin-bottom: 2px; 
     padding: 6px 12px;
     background-color: #333333 !important; 
     border: 1px solid #444; 
     border-radius: 0; 
     box-sizing: border-box;
     
-    position: sticky;
-    /* Der top-Wert muss sich um den neuen Abstand (10px) erhöhen, damit sie korrekt einrastet */
-    top: 68px; 
+    /* ÄNDERUNG VON STICKY ZU FIXED */
+    position: fixed;
+    top: 68px; /* Klebt exakt unter der fixierten Kopfzeile */
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 55; 
 }
 
