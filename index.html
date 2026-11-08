@@ -106,9 +106,154 @@ body {
 }
 
 
+
+
 /* ============================================================
-   2. NAVIGATION & STICKY CONTROLS (Zentriert & in Tabelle integriert)
+   KOPFBEREICH, NAVIGATION & DATUMSZEILE (KOMPLETT-KAPITEL)
    ============================================================ */
+
+/* 1. Haupt-Kopfzeile (Fixiert oben mit blickdichtem Hintergrund) */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto; 
+    background-color: #262626 !important; 
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    z-index: 60;
+    position: sticky;
+    top: 10px;
+}
+
+.header-left, .header-center, .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Logo-Container (Ganz links oben) */
+.app-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    font-weight: bold;
+    color: #e67e22;
+    font-size: 16px;
+    text-decoration: none;
+    letter-spacing: -0.5px;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+.app-logo:hover {
+    background: #2d2d2d;
+    border-color: #e67e22;
+}
+
+/* Haupt-Navigationslinks */
+.header-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: none;
+    color: #aaa;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    height: 36px;
+    box-sizing: border-box;
+}
+
+.header-nav-link .material-symbols-outlined {
+    font-size: 18px;
+    color: #888;
+    transition: color 0.2s;
+}
+
+.header-nav-link:hover {
+    color: #eee;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.header-nav-link:hover .material-symbols-outlined {
+    color: #e67e22;
+}
+
+.header-nav-link.active {
+    background: #1a1a1a;
+    color: #fff;
+    border: 1px solid #333;
+}
+
+.header-nav-link.active .material-symbols-outlined {
+    color: #e67e22;
+}
+
+/* Rechte Symbole im Header (User-Avatar, Chat, Refresh) */
+.header-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #e67e22;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.header-icon-btn:hover {
+    background: #2d2d2d;
+    border-color: #e67e22;
+}
+
+.header-icon-btn .material-symbols-outlined {
+    font-size: 18px;
+    color: #e67e22;
+    margin: 0;
+}
+
+/* Benutzer-Initialen-Button */
+.user-avatar-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #eee;
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+.user-avatar-btn:hover {
+    background: #2d2d2d;
+    border-color: #e67e22;
+}
+
+
+/* 2. Datumszeile & Navigations-Controls (Zentriert, eckig, im Zeit-Boxen-Look) */
 .date-control {
     display: flex;
     justify-content: center; 
@@ -117,17 +262,16 @@ body {
     width: 100%;
     max-width: 1000px;
     margin: 0 auto;
-    margin-bottom: 2px; 
+    margin-bottom: 2px; /* Exakter Abstand zum Lektionen-Grid */
     padding: 6px 12px;
     
-    /* WICHTIG: Fester Hintergrund, exakt wie deine Zeit-Boxen (#333) */
-    background-color: #333333 !important; 
-    
+    background-color: #333333 !important; /* Exakter Ton wie die Zeit-Boxen */
     border: 1px solid #444; 
-    border-radius: 0; 
+    border-radius: 0; /* Eckige Ecken für den nahtlosen Look */
     box-sizing: border-box;
+    
     position: sticky;
-    top: 65px; /* Höhe der Kopfzeile anpassen, falls nötig */
+    top: 58px; /* Klebt direkt unter der Haupt-Kopfzeile beim Scrollen */
     z-index: 55; 
 }
 
@@ -137,7 +281,6 @@ body {
     gap: 6px; 
 }
 
-/* Da alles zentriert ist, wirken hier flexible Breiten nicht mehr störend */
 .nav-left, .nav-center, .nav-right { 
     display: flex;
     align-items: center;
@@ -150,13 +293,12 @@ body {
     gap: 5px; 
 }
 
-/* Buttons & Container - Clean & Uniform */
 .nav-btn, .refresh-btn, .date-container { 
     height: 38px; 
     background: #262626; 
     border: 1px solid #444; 
     color: #e67e22;
-    border-radius: 4px; /* Eckig / dezente Ecken passend zum Grid */
+    border-radius: 4px; 
     box-sizing: border-box;
     display: flex;
     align-items: center;
@@ -171,7 +313,6 @@ body {
     border-color: #e67e22; 
 }
 
-/* Spezielles Styling für den Datum-Button */
 .date-container {
     padding: 0 10px;
     gap: 6px;
@@ -184,7 +325,6 @@ body {
     font-weight: 500;
 }
 
-/* Zentrierung aller Icons */
 .nav-btn .material-symbols-outlined, 
 .refresh-btn .material-symbols-outlined,
 .date-container .material-symbols-outlined,
@@ -196,7 +336,6 @@ body {
     transition: color 0.2s;
 }
 
-/* Der alte DatePicker-Indicator (versteckt) */
 #datePicker { 
     display: none; 
     pointer-events: none; 
@@ -241,6 +380,78 @@ body {
     border: 2px solid #1a1a1a;
     box-shadow: 0 0 8px rgba(230, 126, 34, 0.6);
 }
+
+
+/* 3. Dropdown-Menüs & Overlays */
+.header-nav-container {
+    position: relative;
+    display: inline-block;
+}
+
+.app-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(1.5px);
+    z-index: 30;
+    display: none;
+}
+
+.header-dropdown-menu {
+    position: absolute;
+    top: 42px;
+    left: 0;
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+    width: max-content;
+    min-width: 100%;
+    z-index: 70;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    animation: dropdownFadeIn 0.15s ease;
+}
+
+@keyframes dropdownFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.header-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    color: #ddd;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s, color 0.2s;
+    border-bottom: 1px solid #2c2c2c;
+}
+
+.header-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.header-dropdown-item:hover {
+    background: #2a2a2a;
+    color: #e67e22;
+}
+
+.header-dropdown-item .material-symbols-outlined {
+    font-size: 18px;
+    color: #e67e22;
+}
+
+
+
+    
 
 
 /* ============================================================
@@ -4107,231 +4318,7 @@ input.stellvertretung-input {
 }
     
 
-
-/* ============================================================
-   3. HAUPT-KOPFZEILE (TOP HEADER IM BILD-LOOK)
-   ============================================================ */
-.app-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    max-width: 1000px;
-    margin: 0 auto 10px auto; 
-    
-    /* WICHTIG: Fester, blickdichter Hintergrund, damit nichts durchscheint */
-    background-color: #262626 !important; 
-    
-    border: 1px solid #333;
-    border-radius: 10px;
-    padding: 8px 12px;
-    box-sizing: border-box;
-    z-index: 60;
-    position: sticky;
-    top: 10px;
-}
-
-.header-left, .header-center, .header-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* Logo-Container (Ganz links oben) */
-.app-logo {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 8px;
-    width: 36px;
-    height: 36px;
-    font-weight: bold;
-    color: #e67e22;
-    font-size: 16px;
-    text-decoration: none;
-    letter-spacing: -0.5px;
-    box-sizing: border-box;
-    transition: all 0.2s ease;
-}
-.app-logo:hover {
-    background: #2d2d2d;
-    border-color: #e67e22;
-}
-
-/* Haupt-Navigationslinks (Übersicht, Stundenpläne, etc.) */
-.header-nav-link {
-    display: flex;
-    align-items: center;
-    background: transparent;
-    border: none;
-    color: #aaa;
-    font-family: inherit;
-    font-size: 13px;
-    padding: 6px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-decoration: none;
-    height: 36px;
-    box-sizing: border-box;
-}
-
-.header-nav-link .material-symbols-outlined {
-    font-size: 18px;
-    color: #888;
-    transition: color 0.2s;
-}
-
-.header-nav-link:hover {
-    color: #eee;
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.header-nav-link:hover .material-symbols-outlined {
-    color: #e67e22;
-}
-
-/* Aktive Seite (wie "Stundenpläne" im Bild) */
-.header-nav-link.active {
-    background: #1a1a1a;
-    color: #fff;
-    border: 1px solid #333;
-}
-
-.header-nav-link.active .material-symbols-outlined {
-    color: #e67e22;
-}
-
-/* Rechte Symbole im Header (User-Avatar, Chat, Refresh) */
-.header-icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 8px; /* Harmoniert perfekt mit den übrigen Buttons */
-    color: #e67e22;
-    cursor: pointer;
-    box-sizing: border-box;
-    transition: all 0.2s ease;
-}
-
-.header-icon-btn:hover {
-    background: #2d2d2d;
-    border-color: #e67e22;
-}
-
-.header-icon-btn .material-symbols-outlined {
-    font-size: 18px;
-    color: #e67e22;
-    margin: 0;
-}
-
-/* Benutzer-Initialen-Button */
-.user-avatar-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #eee;
-    font-weight: 600;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-sizing: border-box;
-    transition: all 0.2s ease;
-}
-.user-avatar-btn:hover {
-    background: #2d2d2d;
-    border-color: #e67e22;
-}
-
-
-/* ============================================================
-   KOPFZEILEN-DROPDOWN & OVERLAY (MODERN UI ERWEITERUNG)
-   ============================================================ */
-
-/* Container für den Button mit relativem Bezug für das Dropdown */
-.header-nav-container {
-    position: relative;
-    display: inline-block;
-}
-
-/* Das semi-transparente Overlay (lässt den Plan leicht durchschimmern) */
-.app-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.5); /* Abdunklung */
-    backdrop-filter: blur(1.5px);    /* Dezetes Weichzeichnen/Durchschimmern */
-    z-index: 30;                    /* Unter der Kopfzeile/Dropdowns, aber über dem Plan */
-    display: none;
-}
-
-/* Das Dropdown-Menü unter dem Button */
-.header-dropdown-menu {
-    position: absolute;
-    top: 42px; /* Direkt unterhalb des Buttons in der Kopfzeile */
-    left: 0;
-    background: #222;
-    border: 1px solid #333;
-    border-radius: 8px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-    width: max-content; /* Passt sich exakt an den längsten Text an */
-    min-width: 100%;    /* Mindestens so breit wie der Button selbst */
-    z-index: 70;        /* Über dem Backdrop und der Kopfzeile */
-    display: none;
-    flex-direction: column;
-    overflow: hidden;
-    animation: dropdownFadeIn 0.15s ease;
-}
-
-@keyframes dropdownFadeIn {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Einzelne Menüeinträge */
-.header-dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 6px; /* Reduzierter Abstand zwischen Icon und Text im Dropdown */
-    padding: 10px 14px;
-    color: #ddd;
-    font-size: 13px;
-    cursor: pointer;
-    white-space: nowrap; /* Verhindert Zeilenumbrüche im Text */
-    transition: background 0.2s, color 0.2s;
-    border-bottom: 1px solid #2c2c2c;
-}
-
-.header-dropdown-item:last-child {
-    border-bottom: none;
-}
-
-.header-dropdown-item:hover {
-    background: #2a2a2a;
-    color: #e67e22;
-}
-
-.header-dropdown-item .material-symbols-outlined {
-    font-size: 18px;
-    color: #e67e22;
-}
-
-
-
-
-    
+   
 
 
 
