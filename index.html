@@ -4266,8 +4266,9 @@ input.stellvertretung-input {
     border: 1px solid #333;
     border-radius: 8px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-    min-width: 200px;
-    z-index: 70; /* Über dem Backdrop und der Kopfzeile */
+    width: max-content; /* Passt sich exakt an den längsten Text an */
+    min-width: 100%;    /* Mindestens so breit wie der Button selbst */
+    z-index: 70;        /* Über dem Backdrop und der Kopfzeile */
     display: none;
     flex-direction: column;
     overflow: hidden;
@@ -4288,6 +4289,7 @@ input.stellvertretung-input {
     color: #ddd;
     font-size: 13px;
     cursor: pointer;
+    white-space: nowrap; /* Verhindert Zeilenumbrüche im Text */
     transition: background 0.2s, color 0.2s;
     border-bottom: 1px solid #2c2c2c;
 }
@@ -4305,7 +4307,6 @@ input.stellvertretung-input {
     font-size: 18px;
     color: #e67e22;
 }
-
 
 
 
@@ -4392,7 +4393,7 @@ input.stellvertretung-input {
             <div id="stundenplan-dropdown" class="header-dropdown-menu">
                  <div class="header-dropdown-item" onclick="openStellvertretung(); closeAllHeaderDropdowns();">
                     <span class="material-symbols-outlined">person_search</span> 
-                    <span>Stellvertretung sucher</span>
+                    <span>Stellvertretung suchen</span>
                 </div>
                 <div class="header-dropdown-item" onclick="oeffneVertretungsDialog(); closeAllHeaderDropdowns();">
                     <span class="material-symbols-outlined">swap_horiz</span> 
