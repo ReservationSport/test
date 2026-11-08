@@ -455,8 +455,26 @@ body {
 
 
 
+/* ============================================================
+   SCHWARZER HINTERGRUND-BLOCK (VERSTECKT DIE SCROLLENDE TABELLE)
+   ============================================================ */
+.header-scroll-overlay {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 1000px; /* Passt sich exakt an deine max-breite an */
     
-
+    /* Die Höhe muss genau dem Bereich entsprechen, den Kopfzeile + Datumszeile + Abstände einnehmen */
+    height: 130px; 
+    
+    background-color: #1a1a1a; /* Exakt deine Hintergrundfarbe (#1a1a1a) */
+    z-index: 45; /* Liegt über der Tabelle, aber unter der Datumszeile (55) und Kopfzeile (60) */
+    pointer-events: none; /* Damit man durch das Overlay hindurchklicken kann */
+}
+    
+    
 
 /* ============================================================
    KALENDER MODAL DESIGN (FINAL MIT NAVIGATION)
@@ -4381,9 +4399,16 @@ input.stellvertretung-input {
 </div>
 
 
+    
+
 <!-- ============================================================
      1. ZEILE: HAUPT-KOPFZEILE (LOGO, NAVIGATION & PROFIL)
      ============================================================ -->
+
+ <!-- Unsichtbarer, schwarzer Deckungs-Bereich für das Scrollen -->
+<div class="header-scroll-overlay"></div>   
+    
+    
 <div class="app-header">
     <!-- Links: Logo & Hauptmenü-Links -->
     <div class="header-left">
